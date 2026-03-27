@@ -5,6 +5,8 @@ import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/views/login_screen.dart';
 import 'features/batches/providers/batch_provider.dart';
 import 'features/batches/views/batch_list_screen.dart';
+import 'features/products/providers/product_provider.dart';
+import 'features/products/views/product_config_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +17,7 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()..tryAutoLogin()),
         ChangeNotifierProvider(create: (_) => BatchProvider()),
+        ChangeNotifierProvider(create: (_) => ProductProvider()),
       ],
       child: const MainApp(),
     ),
@@ -111,9 +114,26 @@ class DashboardPlaceholder extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 56),
+                  backgroundColor: Colors.blueGrey,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProductConfigScreen()),
+                ),
+                icon: const Icon(Icons.settings_outlined),
+                label: const Text('Configuración de Precios', style: TextStyle(fontSize: 16)),
+              ),
+            ),
             const SizedBox(height: 32),
             const Text(
-              'Módulo 1 & 2 funcionales.',
+              'Módulo 1, 2 & 3 funcionales.',
               style: TextStyle(
                 color: Colors.green,
                 fontWeight: FontWeight.bold,

@@ -27,9 +27,10 @@
 - [x] Listado dinámico con estadísticas de población.
 - [x] Integración completa backend-frontend.
 
-### Módulo 3: Configuración de Productos
-- [ ] Catálogo de tamaños de huevo (Grande, Mediano, Pequeño).
-- [ ] Asignación de precios fijos por tamaño.
+### Módulo 3: Configuración de Productos [COMPLETADO]
+- [x] Catálogo de tamaños de huevo (Grande, Mediano, Pequeño).
+- [x] Asignación de precios fijos por tamaño.
+- [x] Interfaz de administración de precios en tiempo real.
 
 ### Módulo 4: Producción y Recolección Diaria
 - [ ] Interfaz de ingreso de recolección (por lote, huevos útiles, mermas).
