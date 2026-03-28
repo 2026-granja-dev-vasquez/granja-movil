@@ -16,6 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _rememberMe = true;
 
   @override
   void dispose() {
@@ -88,6 +89,32 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 onChanged: (_) => authProvider.clearError(),
               ),
+              const SizedBox(height: 12),
+              
+              // Tira de Checkbox: Mantener sesión
+              Row(
+                children: [
+                  SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: Checkbox(
+                      value: _rememberMe,
+                      onChanged: (val) => setState(() => _rememberMe = val ?? true),
+                      activeColor: Colors.indigo,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => setState(() => _rememberMe = !_rememberMe),
+                    child: const Text(
+                      'Mantener la sesión iniciada',
+                      style: TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+
               if (authProvider.errorMessage != null) ...[
                 const SizedBox(height: 16),
                 Text(
@@ -106,12 +133,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: const Text('¿Olvidaste tu contraseña?'),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               LoadingButton(
                 text: 'Iniciar Sesión',
                 isLoading: authProvider.isLoading,
                 onPressed: () {
-                  authProvider.login(_emailController.text, _passwordController.text);
+                  authProvider.login(_emailController.text, _passwordController.text, rememberMe: _rememberMe);
                 },
               ),
             ],

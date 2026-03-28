@@ -15,12 +15,15 @@ import 'features/sales/providers/customer_provider.dart';
 import 'features/sales/providers/sale_provider.dart';
 import 'features/inventory/providers/inventory_provider.dart';
 import 'features/cash/providers/cash_provider.dart';
+import 'features/users/providers/user_provider.dart';
 import 'features/sales/views/customers_screen.dart';
 import 'features/sales/views/add_sale_screen.dart';
 import 'features/sales/views/sale_list_screen.dart';
 import 'features/sales/views/accounts_receivable_screen.dart';
 import 'features/inventory/views/product_stock_screen.dart';
 import 'features/cash/views/cash_box_screen.dart';
+import 'features/users/views/user_list_screen.dart';
+import 'features/users/views/profile_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +41,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => SaleProvider()),
         ChangeNotifierProvider(create: (_) => InventoryProvider()),
         ChangeNotifierProvider(create: (_) => CashProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
       ],
       child: const MainApp(),
     ),
@@ -94,6 +98,7 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.read<AuthProvider>().user;
+    final isAdmin = user?.role == 'admin';
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -196,15 +201,16 @@ class DashboardScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                _QuickActionCard(
-                  title: 'Caja',
-                  icon: Icons.account_balance_wallet_outlined,
-                  color: Colors.brown,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const CashBoxScreen()),
+                if (isAdmin)
+                  _QuickActionCard(
+                    title: 'Caja',
+                    icon: Icons.account_balance_wallet_outlined,
+                    color: Colors.brown,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const CashBoxScreen()),
+                    ),
                   ),
-                ),
               ],
             ),
 
@@ -247,91 +253,116 @@ class AppDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = context.read<AuthProvider>();
     final user = authProvider.user;
+    final isAdmin = user?.role == 'admin';
 
     return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
+      child: Column(
         children: [
-          UserAccountsDrawerHeader(
-            decoration: const BoxDecoration(color: Colors.indigo),
-            accountName: Text(
-              user?.name ?? 'Usuario',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                UserAccountsDrawerHeader(
+                  decoration: const BoxDecoration(color: Colors.indigo),
+                  accountName: Text(
+                    user?.name ?? 'Usuario',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  accountEmail: Text(
+                    user?.role.toUpperCase() ?? 'OPERADOR',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
+                  ),
+                  currentAccountPicture: const CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: Icon(Icons.person, color: Colors.indigo, size: 40),
+                  ),
+                ),
+                
+                // MI CUENTA
+                _DrawerItem(
+                  icon: Icons.account_circle_outlined,
+                  label: 'Mi Perfil',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
+                ),
+                const Divider(),
+
+                // OPERACIONES DIARIAS
+                const Padding(
+                  padding: EdgeInsets.only(left: 16, top: 8, bottom: 4),
+                  child: Text("OPERACIONES DIARIAS", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                ),
+                _DrawerItem(
+                  icon: Icons.egg_outlined,
+                  label: 'Producción Diaria',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyProductionScreen())),
+                ),
+                _DrawerItem(
+                  icon: Icons.shopping_cart_outlined,
+                  label: 'Nueva Venta',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddSaleScreen())),
+                ),
+                _DrawerItem(
+                  icon: Icons.history_edu_outlined,
+                  label: 'Historial de Ventas',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SaleListScreen())),
+                ),
+                _DrawerItem(
+                  icon: Icons.payments_outlined,
+                  label: 'Cobros (Cuentas x C.)',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountsReceivableScreen())),
+                ),
+                _DrawerItem(
+                  icon: Icons.inventory_2_outlined,
+                  label: 'Stock en Existencia',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductStockScreen())),
+                ),
+                
+                // CAJA: Solo Admins
+                if (isAdmin)
+                  _DrawerItem(
+                    icon: Icons.account_balance_wallet_outlined,
+                    label: 'Caja',
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CashBoxScreen())),
+                  ),
+                
+                const Divider(),
+                
+                // ADMINISTRACIÓN
+                const Padding(
+                  padding: EdgeInsets.only(left: 16, top: 8, bottom: 4),
+                  child: Text("ADMINISTRACIÓN", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                ),
+                _DrawerItem(
+                  icon: Icons.pets_outlined,
+                  label: 'Gestión de Lotes',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BatchListScreen())),
+                ),
+                _DrawerItem(
+                  icon: Icons.settings_outlined,
+                  label: 'Configuración de Precios',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductConfigScreen())),
+                ),
+                _DrawerItem(
+                  icon: Icons.people_outline,
+                  label: 'Gestión de Clientes',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomersScreen())),
+                ),
+                
+                // GESTIÓN DE USUARIOS: Solo Admins
+                if (isAdmin)
+                  _DrawerItem(
+                    icon: Icons.people_alt_outlined,
+                    label: 'Gestión de Usuarios',
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserListScreen())),
+                  ),
+              ],
             ),
-            accountEmail: Text(
-              user?.role ?? 'Administrador',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.white.withOpacity(0.8),
-              ),
-            ),
-            currentAccountPicture: const CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(Icons.person, color: Colors.indigo, size: 40),
-            ),
-          ),
-          
-          // OPERACIONES DIARIAS
-          const Padding(
-            padding: EdgeInsets.only(left: 16, top: 8, bottom: 4),
-            child: Text("OPERACIONES DIARIAS", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-          ),
-          _DrawerItem(
-            icon: Icons.egg_outlined,
-            label: 'Producción Diaria',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyProductionScreen())),
-          ),
-          _DrawerItem(
-            icon: Icons.shopping_cart_outlined,
-            label: 'Nueva Venta',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddSaleScreen())),
-          ),
-          _DrawerItem(
-            icon: Icons.history_edu_outlined,
-            label: 'Historial de Ventas',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SaleListScreen())),
-          ),
-          _DrawerItem(
-            icon: Icons.payments_outlined,
-            label: 'Cobros (Cuentas x C.)',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountsReceivableScreen())),
-          ),
-          _DrawerItem(
-            icon: Icons.inventory_2_outlined,
-            label: 'Stock en Existencia',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductStockScreen())),
-          ),
-          _DrawerItem(
-            icon: Icons.account_balance_wallet_outlined,
-            label: 'Caja',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CashBoxScreen())),
           ),
           
           const Divider(),
-          
-          // ADMINISTRACIÓN
-          const Padding(
-            padding: EdgeInsets.only(left: 16, top: 8, bottom: 4),
-            child: Text("ADMINISTRACIÓN", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-          ),
-          _DrawerItem(
-            icon: Icons.pets_outlined,
-            label: 'Gestión de Lotes',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BatchListScreen())),
-          ),
-          _DrawerItem(
-            icon: Icons.settings_outlined,
-            label: 'Configuración de Precios',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductConfigScreen())),
-          ),
-          _DrawerItem(
-            icon: Icons.people_outline,
-            label: 'Gestión de Clientes',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomersScreen())),
-          ),
-          
-          const Divider(),
-          
           _DrawerItem(
             icon: Icons.logout,
             label: 'Cerrar Sesión',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/user_model.dart';
 import '../../../core/services/auth_service.dart';
 
@@ -13,7 +14,7 @@ class AuthProvider with ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _user != null;
 
-  Future<void> login(String email, String password) async {
+  Future<void> login(String email, String password, {bool rememberMe = true}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -22,6 +23,9 @@ class AuthProvider with ChangeNotifier {
 
     if (result['success']) {
       _user = result['user'];
+      // Store the remember_me preference
+      final storage = const FlutterSecureStorage();
+      await storage.write(key: 'remember_me', value: rememberMe.toString());
     } else {
       _errorMessage = result['message'];
     }
