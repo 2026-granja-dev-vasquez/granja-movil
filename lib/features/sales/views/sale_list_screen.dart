@@ -35,10 +35,10 @@ class _SaleListScreenState extends State<SaleListScreen> {
     final startStr = DateFormat('yyyy-MM-dd').format(_startDate);
     final endStr = DateFormat('yyyy-MM-dd').format(_endDate);
     context.read<SaleProvider>().fetchSales(
-          customerId: _selectedCustomerId,
-          startDate: startStr,
-          endDate: endStr,
-        );
+      customerId: _selectedCustomerId,
+      startDate: startStr,
+      endDate: endStr,
+    );
   }
 
   Future<void> _selectDateRange() async {
@@ -89,17 +89,15 @@ class _SaleListScreenState extends State<SaleListScreen> {
       groupedSales[dateStr]!.add(sale);
     }
 
-    final sortedDates = groupedSales.keys.toList()..sort((a, b) => b.compareTo(a));
+    final sortedDates = groupedSales.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
-        title: const Text("Diario de Ventas"),
+        title: const Text("Historial de Ventas"),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _applyFilters,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _applyFilters),
         ],
       ),
       body: Column(
@@ -112,23 +110,23 @@ class _SaleListScreenState extends State<SaleListScreen> {
             child: saleProvider.isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : sortedDates.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: sortedDates.length,
-                        itemBuilder: (context, index) {
-                          final dateKey = sortedDates[index];
-                          final daySales = groupedSales[dateKey]!;
-                          final date = DateTime.parse(dateKey);
+                ? _buildEmptyState()
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: sortedDates.length,
+                    itemBuilder: (context, index) {
+                      final dateKey = sortedDates[index];
+                      final daySales = groupedSales[dateKey]!;
+                      final date = DateTime.parse(dateKey);
 
-                          return _buildDailySummaryCard(
-                            date,
-                            daySales,
-                            dayFormatter,
-                            formatter,
-                          );
-                        },
-                      ),
+                      return _buildDailySummaryCard(
+                        date,
+                        daySales,
+                        dayFormatter,
+                        formatter,
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -140,7 +138,13 @@ class _SaleListScreenState extends State<SaleListScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -169,13 +173,27 @@ class _SaleListScreenState extends State<SaleListScreen> {
                     child: DropdownButton<int?>(
                       value: _selectedCustomerId,
                       isExpanded: true,
-                      hint: const Text("Filtrar Cliente", style: TextStyle(fontSize: 12)),
+                      hint: const Text(
+                        "Filtrar Cliente",
+                        style: TextStyle(fontSize: 12),
+                      ),
                       items: [
-                        const DropdownMenuItem(value: null, child: Text("Todos los Clientes", style: TextStyle(fontSize: 12))),
-                        ...customerProvider.customers.map((c) => DropdownMenuItem(
-                              value: c.id,
-                              child: Text(c.name, style: const TextStyle(fontSize: 12)),
-                            )),
+                        const DropdownMenuItem(
+                          value: null,
+                          child: Text(
+                            "Todos los Clientes",
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        ...customerProvider.customers.map(
+                          (c) => DropdownMenuItem(
+                            value: c.id,
+                            child: Text(
+                              c.name,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ),
                       ],
                       onChanged: (val) {
                         setState(() => _selectedCustomerId = val);
@@ -187,19 +205,32 @@ class _SaleListScreenState extends State<SaleListScreen> {
               ),
             ],
           ),
-          if (_selectedCustomerId != null || DateFormat('yyyy-MM-dd').format(_startDate) != DateFormat('yyyy-MM-dd').format(DateTime.now().subtract(const Duration(days: 7))))
+          if (_selectedCustomerId != null ||
+              DateFormat('yyyy-MM-dd').format(_startDate) !=
+                  DateFormat(
+                    'yyyy-MM-dd',
+                  ).format(DateTime.now().subtract(const Duration(days: 7))))
             Padding(
               padding: const EdgeInsets.only(top: 8.0),
               child: InkWell(
                 onTap: () {
                   setState(() {
                     _selectedCustomerId = null;
-                    _startDate = DateTime.now().subtract(const Duration(days: 7));
+                    _startDate = DateTime.now().subtract(
+                      const Duration(days: 7),
+                    );
                     _endDate = DateTime.now();
                   });
                   _applyFilters();
                 },
-                child: const Text("Limpiar filtros", style: TextStyle(color: Colors.blue, fontSize: 12, decoration: TextDecoration.underline)),
+                child: const Text(
+                  "Limpiar filtros",
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontSize: 12,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
               ),
             ),
         ],
@@ -207,7 +238,12 @@ class _SaleListScreenState extends State<SaleListScreen> {
     );
   }
 
-  Widget _buildDailySummaryCard(DateTime date, List<SaleModel> daySales, DateFormat dayFormatter, DateFormat formatter) {
+  Widget _buildDailySummaryCard(
+    DateTime date,
+    List<SaleModel> daySales,
+    DateFormat dayFormatter,
+    DateFormat formatter,
+  ) {
     // Calcular agregados por tamaño para el día
     final Map<String, int> aggregates = {};
     double totalDayMoney = 0;
@@ -222,7 +258,10 @@ class _SaleListScreenState extends State<SaleListScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: Colors.grey.shade200)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
       child: Column(
         children: [
           // Header del día
@@ -230,24 +269,37 @@ class _SaleListScreenState extends State<SaleListScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: Colors.indigo.shade50,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   dayFormatter.format(date).toLowerCase(),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.indigo),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.indigo,
+                  ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.blue.shade700,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     "Q${totalDayMoney.toStringAsFixed(2)}",
-                    style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -260,7 +312,15 @@ class _SaleListScreenState extends State<SaleListScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("PRODUCTOS VENDIDOS:", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1)),
+                const Text(
+                  "PRODUCTOS VENDIDOS:",
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                    letterSpacing: 1,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 GridView.builder(
                   shrinkWrap: true,
@@ -286,8 +346,17 @@ class _SaleListScreenState extends State<SaleListScreen> {
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
-              title: const Text("Ver transacciones individuales", style: TextStyle(fontSize: 12, color: Colors.blueAccent, fontWeight: FontWeight.w500)),
-              children: daySales.map((sale) => _buildMiniSaleTile(sale, formatter)).toList(),
+              title: const Text(
+                "Ver transacciones individuales",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.blueAccent,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              children: daySales
+                  .map((sale) => _buildMiniSaleTile(sale, formatter))
+                  .toList(),
             ),
           ),
         ],
@@ -298,7 +367,7 @@ class _SaleListScreenState extends State<SaleListScreen> {
   Widget _buildSizeSummaryItem(String name, int units) {
     final cartons = units ~/ 30;
     final leftover = units % 30;
-    
+
     String display = "";
     if (cartons > 0 && leftover > 0) {
       display = "$cartons c. y $leftover u.";
@@ -318,8 +387,18 @@ class _SaleListScreenState extends State<SaleListScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.orange)),
-          Text(display, style: const TextStyle(fontSize: 11, color: Colors.black87)),
+          Text(
+            name,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              color: Colors.orange,
+            ),
+          ),
+          Text(
+            display,
+            style: const TextStyle(fontSize: 11, color: Colors.black87),
+          ),
         ],
       ),
     );
@@ -327,16 +406,18 @@ class _SaleListScreenState extends State<SaleListScreen> {
 
   Widget _buildMiniSaleTile(SaleModel sale, DateFormat formatter) {
     final bool isPaid = sale.status == SaleStatus.paid;
-    
+
     // Crear un resumen corto de los productos comprados
-    String itemsSummary = sale.items.map((i) {
-      final size = i.productSize?.name ?? "?";
-      final cartons = i.quantity ~/ 30;
-      final units = i.quantity % 30;
-      if (cartons > 0 && units > 0) return "$size ($cartons c. $units u.)";
-      if (cartons > 0) return "$size ($cartons c.)";
-      return "$size ($units u.)";
-    }).join(", ");
+    String itemsSummary = sale.items
+        .map((i) {
+          final size = i.productSize?.name ?? "?";
+          final cartons = i.quantity ~/ 30;
+          final units = i.quantity % 30;
+          if (cartons > 0 && units > 0) return "$size ($cartons c. $units u.)";
+          if (cartons > 0) return "$size ($cartons c.)";
+          return "$size ($units u.)";
+        })
+        .join(", ");
 
     if (itemsSummary.length > 35) {
       itemsSummary = "${itemsSummary.substring(0, 32)}...";
@@ -346,28 +427,34 @@ class _SaleListScreenState extends State<SaleListScreen> {
       dense: true,
       visualDensity: VisualDensity.compact,
       leading: Icon(
-        isPaid ? Icons.check_circle_outline : Icons.access_time, 
-        size: 14, 
-        color: isPaid ? Colors.green : Colors.orange
+        isPaid ? Icons.check_circle_outline : Icons.access_time,
+        size: 14,
+        color: isPaid ? Colors.green : Colors.orange,
       ),
       title: Text(
-        sale.customer?.name ?? "Consumidor Final", 
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)
+        sale.customer?.name ?? "Consumidor Final",
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
       ),
       subtitle: Text(
-        itemsSummary, 
-        style: TextStyle(fontSize: 11, color: Colors.blueGrey.shade600, fontWeight: FontWeight.w500)
+        itemsSummary,
+        style: TextStyle(
+          fontSize: 11,
+          color: Colors.blueGrey.shade600,
+          fontWeight: FontWeight.w500,
+        ),
       ),
       trailing: Text(
-        "Q${sale.totalAmount.toStringAsFixed(2)}", 
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.indigo)
+        "Q${sale.totalAmount.toStringAsFixed(2)}",
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+          color: Colors.indigo,
+        ),
       ),
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => SaleDetailScreen(sale: sale),
-          ),
+          MaterialPageRoute(builder: (context) => SaleDetailScreen(sale: sale)),
         );
       },
     );
@@ -378,9 +465,16 @@ class _SaleListScreenState extends State<SaleListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey.shade300),
+          Icon(
+            Icons.receipt_long_outlined,
+            size: 64,
+            color: Colors.grey.shade300,
+          ),
           const SizedBox(height: 16),
-          const Text("No hay ventas para los filtros seleccionados.", style: TextStyle(color: Colors.grey, fontSize: 16)),
+          const Text(
+            "No hay ventas para los filtros seleccionados.",
+            style: TextStyle(color: Colors.grey, fontSize: 16),
+          ),
         ],
       ),
     );

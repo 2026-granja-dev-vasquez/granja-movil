@@ -14,11 +14,13 @@ import 'features/production/views/daily_production_screen.dart';
 import 'features/sales/providers/customer_provider.dart';
 import 'features/sales/providers/sale_provider.dart';
 import 'features/inventory/providers/inventory_provider.dart';
+import 'features/cash/providers/cash_provider.dart';
 import 'features/sales/views/customers_screen.dart';
 import 'features/sales/views/add_sale_screen.dart';
 import 'features/sales/views/sale_list_screen.dart';
 import 'features/sales/views/accounts_receivable_screen.dart';
 import 'features/inventory/views/product_stock_screen.dart';
+import 'features/cash/views/cash_box_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,6 +37,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => CustomerProvider()),
         ChangeNotifierProvider(create: (_) => SaleProvider()),
         ChangeNotifierProvider(create: (_) => InventoryProvider()),
+        ChangeNotifierProvider(create: (_) => CashProvider()),
       ],
       child: const MainApp(),
     ),
@@ -197,11 +200,10 @@ class DashboardScreen extends StatelessWidget {
                   title: 'Caja',
                   icon: Icons.account_balance_wallet_outlined,
                   color: Colors.brown,
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Módulo de Caja Próximamente...")),
-                    );
-                  },
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CashBoxScreen()),
+                  ),
                 ),
               ],
             ),
@@ -302,9 +304,7 @@ class AppDrawer extends StatelessWidget {
           _DrawerItem(
             icon: Icons.account_balance_wallet_outlined,
             label: 'Caja',
-            onTap: () {
-               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Módulo de Caja Próximamente...")));
-            },
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CashBoxScreen())),
           ),
           
           const Divider(),

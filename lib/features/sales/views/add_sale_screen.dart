@@ -6,6 +6,8 @@ import '../providers/customer_provider.dart';
 import '../../products/providers/product_provider.dart';
 import '../../products/models/product_size_model.dart';
 import '../../production/providers/production_provider.dart';
+import '../../cash/providers/cash_provider.dart';
+import '../../cash/views/cash_box_screen.dart';
 
 class AddSaleScreen extends StatefulWidget {
   const AddSaleScreen({super.key});
@@ -395,11 +397,46 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
   Widget build(BuildContext context) {
     final customers = context.watch<CustomerProvider>().activeCustomers;
     final saleProvider = context.watch<SaleProvider>();
+    final cashProvider = context.watch<CashProvider>();
+    final hasActiveBox = cashProvider.activeBox != null;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Nueva Venta')),
       body: Column(
         children: [
+          // BANNER DE AVISO CAJA CERRADA
+          if (!hasActiveBox && _status != SaleStatus.pending)
+            Container(
+              width: double.infinity,
+              color: Colors.amber.shade100,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "CAJA CERRADA",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.brown),
+                        ),
+                        const Text(
+                          "Debes abrir una caja para registrar pagos.",
+                          style: TextStyle(fontSize: 11, color: Colors.brown),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CashBoxScreen())),
+                    child: const Text("ABRIR AQUÍ", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+            
           // CABECERA DE VENTA
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -457,7 +494,15 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                                 child: Text("Pendiente (Crédito)"),
                               ),
                             ],
-                            onChanged: (val) => setState(() => _status = val!),
+                            onChanged: (val) {
+                              setState(() => _status = val!);
+                              // Si no hay caja, y eligen pagado, avisar
+                              if (!hasActiveBox && val == SaleStatus.paid) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text("Abre la caja primero para ventas al contado."))
+                                );
+                              }
+                            },
                           ),
                         ),
                         const SizedBox(width: 12),
