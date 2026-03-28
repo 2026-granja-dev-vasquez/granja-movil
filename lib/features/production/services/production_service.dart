@@ -25,6 +25,53 @@ class DailySummaryReport {
   }
 }
 
+class DailyBatchSummary {
+  final DateTime date;
+  final List<BatchSummaryItem> report;
+
+  DailyBatchSummary({
+    required this.date,
+    required this.report,
+  });
+
+  factory DailyBatchSummary.fromJson(Map<String, dynamic> json) {
+    final List<dynamic> reportData = json['report'];
+    return DailyBatchSummary(
+      date: DateTime.parse(json['date']),
+      report: reportData.map((item) => BatchSummaryItem.fromJson(item)).toList(),
+    );
+  }
+}
+
+class BatchSummaryItem {
+  final int batchId;
+  final String batchName;
+  final int totalUnits;
+  final int cartons;
+  final int leftoverUnits;
+  final String formatted;
+
+  BatchSummaryItem({
+    required this.batchId,
+    required this.batchName,
+    required this.totalUnits,
+    required this.cartons,
+    required this.leftoverUnits,
+    required this.formatted,
+  });
+
+  factory BatchSummaryItem.fromJson(Map<String, dynamic> json) {
+    return BatchSummaryItem(
+      batchId: json['batch_id'],
+      batchName: json['batch_name'],
+      totalUnits: json['total_units'],
+      cartons: json['cartons'],
+      leftoverUnits: json['leftover_units'],
+      formatted: json['formatted'],
+    );
+  }
+}
+
 class ProductionService {
   final _storage = const FlutterSecureStorage();
 
@@ -118,5 +165,25 @@ class ProductionService {
       return data.map((item) => DailySummaryReport.fromJson(item)).toList();
     }
     throw Exception('Error al cargar reporte de producción');
+  }
+
+  Future<List<DailyBatchSummary>> getBatchSummary({String? date, String? startDate, String? endDate}) async {
+    final token = await _getToken();
+    final url = Uri.parse('${ApiConstants.baseUrl}/daily-collections/summary').replace(queryParameters: {
+      if (date != null) 'date': date,
+      if (startDate != null) 'start_date': startDate,
+      if (endDate != null) 'end_date': endDate,
+    });
+
+    final response = await http.get(url, headers: {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    });
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((item) => DailyBatchSummary.fromJson(item)).toList();
+    }
+    throw Exception('Error al cargar reporte de galeras');
   }
 }

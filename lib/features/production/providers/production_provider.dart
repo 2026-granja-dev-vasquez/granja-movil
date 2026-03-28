@@ -13,6 +13,7 @@ class ProductionProvider with ChangeNotifier {
   
   // Lista de Reportes Diarios para Comparación
   List<DailySummaryReport> _dailyReports = [];
+  List<DailyBatchSummary> _batchSummaries = [];
 
   // Datos del día seleccionado (Para el balance/banner)
   List<BatchCollectionModel> _dailyBatchCollections = [];
@@ -24,6 +25,7 @@ class ProductionProvider with ChangeNotifier {
   List<BatchCollectionModel> get batchCollections => _batchCollections;
   List<ProductionModel> get sortedProductions => _sortedProductions;
   List<DailySummaryReport> get dailyReports => _dailyReports;
+  List<DailyBatchSummary> get batchSummaries => _batchSummaries;
   
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -56,6 +58,7 @@ class ProductionProvider with ChangeNotifier {
 
       // 3. Reporte de Producción: ÚLTIMOS 3 DÍAS por defecto para comparativa
       _dailyReports = await _service.getInventorySummary(startDate: threeDaysAgo, endDate: targetDate);
+      _batchSummaries = await _service.getBatchSummary(startDate: threeDaysAgo, endDate: targetDate);
       
     } catch (e) {
       _errorMessage = e.toString();
@@ -74,6 +77,7 @@ class ProductionProvider with ChangeNotifier {
       final endStr = DateFormat('yyyy-MM-dd').format(end);
       
       _dailyReports = await _service.getInventorySummary(startDate: startStr, endDate: endStr);
+      _batchSummaries = await _service.getBatchSummary(startDate: startStr, endDate: endStr);
       
       // Sincronizar otros listados
       _batchCollections = await _service.getBatchCollections(startDate: startStr);
@@ -94,6 +98,8 @@ class ProductionProvider with ChangeNotifier {
       final dateStr = DateFormat('yyyy-MM-dd').format(date);
       
       _dailyReports = await _service.getInventorySummary(date: dateStr);
+      _batchSummaries = await _service.getBatchSummary(date: dateStr);
+      
       _batchCollections = await _service.getBatchCollections(date: dateStr);
       _sortedProductions = await _service.getSortedProductions(date: dateStr);
       

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import '../models/production_model.dart';
 import '../providers/production_provider.dart';
 import '../../batches/providers/batch_provider.dart';
 import '../../products/providers/product_provider.dart';
@@ -83,14 +84,14 @@ class _DailyProductionScreenState extends State<DailyProductionScreen> {
           bottom: const TabBar(
             isScrollable: true,
             tabs: [
-              Tab(icon: Icon(Icons.assessment), text: 'Producción del Día'),
+              Tab(icon: Icon(Icons.assessment), text: 'Resumen Diario'),
               Tab(
                 icon: Icon(Icons.shopping_basket),
-                text: 'Traído de Galeras',
+                text: 'Totales por Lote',
               ),
               Tab(
-                icon: Icon(Icons.cleaning_services),
-                text: 'Historial Limpieza',
+                icon: Icon(Icons.menu_book),
+                text: 'Bitácora Galeras',
               ),
             ],
           ),
@@ -99,7 +100,7 @@ class _DailyProductionScreenState extends State<DailyProductionScreen> {
           children: [
             const DailyProductionComparisonTab(),
             RawCollectionsTab(isFiltered: _selectedRange != null),
-            SortedHistoryTab(isFiltered: _selectedRange != null),
+            BatchCollectionHistoryTab(isFiltered: _selectedRange != null),
           ],
         ),
         floatingActionButton: Column(
@@ -329,56 +330,139 @@ class RawCollectionsTab extends StatelessWidget {
     if (provider.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (provider.batchCollections.isEmpty) {
-      return const Center(
-        child: Text('Aún no has traído nada de las galeras.'),
+
+    if (provider.batchSummaries.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: () => provider.fetchDailyData(),
+        child: ListView(
+          children: const [
+            SizedBox(height: 100),
+            Center(
+              child: Text(
+                "No hay registros de recolecta en este periodo.\n(Mostrando últimos 3 días)",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ],
+        ),
       );
     }
 
     return RefreshIndicator(
       onRefresh: () => provider.fetchDailyData(),
-      child: Column(
-        children: [
-          if (!isFiltered) 
-           const Padding(
-             padding: EdgeInsets.symmetric(vertical: 8.0),
-             child: Text("Mostrando últimos 3 días", style: TextStyle(color: Colors.grey, fontSize: 12)),
-           ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: provider.batchCollections.length,
-              itemBuilder: (context, index) {
-                final item = provider.batchCollections[index];
-                final cartons = item.quantity ~/ 30;
-                final leftover = item.quantity % 30;
-                final formatted = cartons > 0
-                    ? "$cartons cartones y $leftover huevos"
-                    : "$leftover huevos";
-                final dateStr = DateFormat('dd/MM').format(item.date);
-            
-                return Card(
-                  child: ListTile(
-                    title: Text('Lote: ${item.batchName}'),
-                    subtitle: Text('Traído ($dateStr): $formatted'),
-                    trailing: const Icon(
-                      Icons.check_circle_outline,
-                      color: Colors.blue,
-                    ),
-                  ),
-                );
-              },
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: provider.batchSummaries.length,
+        itemBuilder: (context, index) {
+          final dayReport = provider.batchSummaries[index];
+          final dateStr = DateFormat("EEEE d 'de' MMMM", 'es').format(dayReport.date);
+          final fullDateStr = dateStr[0].toUpperCase() + dateStr.substring(1);
+
+          final bool isEmpty = dayReport.report.isEmpty;
+          
+          return Card(
+            margin: const EdgeInsets.only(bottom: 24),
+            elevation: isEmpty ? 1 : 4,
+            color: isEmpty ? Colors.grey.shade50 : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: isEmpty ? BorderSide(color: Colors.grey.shade300) : BorderSide.none,
             ),
-          ),
-        ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Cabecera de la Tarjeta (Tema Verde para Galeras)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isEmpty ? Colors.grey.shade400 : Colors.teal.shade700,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          fullDateStr,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      if (!isEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            "Total: ${dayReport.report.fold(0, (sum, i) => sum + i.totalUnits)} huevos",
+                            style: TextStyle(
+                              color: Colors.teal.shade800,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Icon(Icons.house_siding_rounded, color: Colors.grey, size: 40),
+                          SizedBox(height: 8),
+                          Text(
+                            "Sin recolecta registrada de galeras :(",
+                            style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else ...[
+                  const SizedBox(height: 8),
+                  // Detalle por Lote
+                  ...dayReport.report.map((item) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.location_on, color: Colors.teal, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            item.batchName,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        Text(
+                          item.formatted,
+                          style: const TextStyle(color: Colors.blueGrey),
+                        ),
+                      ],
+                    ),
+                  )),
+                ],
+                const SizedBox(height: 16),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 }
 
-class SortedHistoryTab extends StatelessWidget {
+class BatchCollectionHistoryTab extends StatelessWidget {
   final bool isFiltered;
-  const SortedHistoryTab({super.key, required this.isFiltered});
+  const BatchCollectionHistoryTab({super.key, required this.isFiltered});
 
   @override
   Widget build(BuildContext context) {
@@ -387,56 +471,119 @@ class SortedHistoryTab extends StatelessWidget {
     if (provider.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (provider.sortedProductions.isEmpty) {
-      return const Center(child: Text('Historial de limpieza vacío.'));
+
+    if (provider.batchCollections.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: () => provider.fetchDailyData(),
+        child: ListView(
+          children: const [
+            SizedBox(height: 100),
+            Center(
+              child: Text(
+                'Sin registros de campo en este periodo.',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ],
+        ),
+      );
     }
+
+    // Agrupar las recolectas por fecha en el UI
+    final Map<String, List<BatchCollectionModel>> groupedByDate = {};
+    for (var collection in provider.batchCollections) {
+      final dateStr = DateFormat('yyyy-MM-dd').format(collection.date);
+      if (!groupedByDate.containsKey(dateStr)) {
+        groupedByDate[dateStr] = [];
+      }
+      groupedByDate[dateStr]!.add(collection);
+    }
+
+    final sortedDates = groupedByDate.keys.toList()..sort((a, b) => b.compareTo(a));
 
     return RefreshIndicator(
       onRefresh: () => provider.fetchDailyData(),
-      child: Column(
-        children: [
-          if (!isFiltered) 
-           const Padding(
-             padding: EdgeInsets.symmetric(vertical: 8.0),
-             child: Text("Mostrando última semana", style: TextStyle(color: Colors.grey, fontSize: 12)),
-           ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: provider.sortedProductions.length,
-              itemBuilder: (context, index) {
-                final item = provider.sortedProductions[index];
-                final dateStr = DateFormat('dd/MM').format(item.date);
-            
-                return Card(
-                  child: ListTile(
-                    title: Text(
-                      '${item.productSizeName}: ${item.formattedCollection}',
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Fecha: $dateStr',
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: sortedDates.length,
+        itemBuilder: (context, index) {
+          final dateKey = sortedDates[index];
+          final collections = groupedByDate[dateKey]!;
+          final dateObj = DateTime.parse(dateKey);
+          final dateTitle = DateFormat("EEEE d 'de' MMMM", 'es').format(dateObj);
+          final fullDateTitle = dateTitle[0].toUpperCase() + dateTitle.substring(1);
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: 24),
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Cabecera de la Bitácora de Campo (Azul Acero)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.indigo.shade700,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.menu_book, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          fullDateTitle,
                           style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.blueGrey,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        if (item.damagedQuantity > 0)
-                          Text(
-                            'Quebrados: ${item.damagedQuantity}',
-                            style: const TextStyle(color: Colors.red),
-                          ),
-                      ],
-                    ),
-                    trailing: const Icon(Icons.inventory, color: Colors.green),
+                      ),
+                      Text(
+                        "${collections.length} recolecciones",
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                    ],
                   ),
-                );
-              },
+                ),
+                // Lista de Recolectas Individuales
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: collections.length,
+                  // Invertimos el orden dentro del día para que la más reciente (última en entrar) sea la #1 en el log o viceversa.
+                  // Mostraremos ID de entrada (Audit Trail)
+                  separatorBuilder: (context, i) => const Divider(height: 1),
+                  itemBuilder: (context, i) {
+                    final item = collections[i];
+                    final cartons = item.quantity ~/ 30;
+                    final leftovers = item.quantity % 30;
+                    final formatted = cartons > 0 
+                      ? "$cartons cartones y $leftovers huevos"
+                      : "$leftovers huevos";
+
+                    return ListTile(
+                      dense: true,
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.indigo.shade50,
+                        radius: 12,
+                        child: Text("${collections.length - i}", style: const TextStyle(fontSize: 10, color: Colors.indigo)),
+                      ),
+                      title: Text(
+                        "Lote: ${item.batchName}",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text("Entró: $formatted"),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
