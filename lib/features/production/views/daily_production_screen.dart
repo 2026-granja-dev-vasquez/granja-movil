@@ -687,85 +687,47 @@ class CurrentStockHeader extends StatelessWidget {
     final provider = context.watch<ProductionProvider>();
     final stock = provider.inventoryStatus;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 24),
-      elevation: 4,
-      color: Colors.blueGrey.shade900,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blueGrey.shade900,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white10),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          const Text(
+            "RESUMEN DE STOCK:",
+            style: TextStyle(
+              color: Colors.amber,
+              fontWeight: FontWeight.bold,
+              fontSize: 9,
+              letterSpacing: 1.0,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...stock.map((item) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Icon(Icons.inventory_2, color: Colors.amber, size: 20),
-                const SizedBox(width: 8),
-                const Text(
-                  "STOCK ACTUAL (DISPONIBLE)",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                    fontSize: 12,
-                  ),
-                ),
-                const Spacer(),
                 Text(
-                  "Total: ${stock.fold(0, (sum, i) => sum + i.totalUnits)} huevos",
+                  item.name,
+                  style: const TextStyle(color: Colors.white70, fontSize: 11),
+                ),
+                Text(
+                  item.formatted,
                   style: const TextStyle(
-                    color: Colors.amber,
+                    color: Colors.white,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-          ),
-          const Divider(color: Colors.white24),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: Row(
-              children: stock
-                  .map(
-                    (item) => Container(
-                      margin: const EdgeInsets.only(right: 12),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.name.toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            item.formatted,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
+          )).toList(),
         ],
       ),
     );

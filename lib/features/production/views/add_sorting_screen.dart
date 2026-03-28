@@ -62,6 +62,8 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
     );
   }
 
+  bool _showBrokenEggs = false;
+
   @override
   Widget build(BuildContext context) {
     final productProvider = context.watch<ProductProvider>();
@@ -70,12 +72,13 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Paso 2: Limpieza y Clasificación')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const SizedBox(height: 16),
               // BANNER DE BALANCE MEJORADO (CON QUEBRADOS ACUMULADOS)
               Container(
                 padding: const EdgeInsets.all(16),
@@ -143,56 +146,69 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+
+              // PREGUNTA DINÁMICA DE QUEBRADOS
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                activeColor: Colors.red,
+                title: const Text(
+                  '¿Hay huevos quebrados?',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                ),
+                value: _showBrokenEggs,
+                onChanged: (val) => setState(() => _showBrokenEggs = val),
+              ),
               
               // REGISTRO GLOBAL DE QUEBRADOS (DINÁMICO)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red.shade200),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Nuevos Huevos Quebrados',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.red),
-                        ),
-                        if (productionProvider.totalDailyDamaged > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(8)),
-                            child: Text(
-                              "Ya llevas: ${productionProvider.totalDailyDamaged}",
-                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                            ),
+              if (_showBrokenEggs)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Nuevos Huevos Quebrados',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.red),
                           ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      decoration: const InputDecoration(
-                        hintText: 'Ej: 5',
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.heart_broken, color: Colors.red),
+                          if (productionProvider.totalDailyDamaged > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(8)),
+                              child: Text(
+                                "Ya llevas: ${productionProvider.totalDailyDamaged}",
+                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                        ],
                       ),
-                      keyboardType: TextInputType.number,
-                      onChanged: (val) => setState(() => _globalDamaged = int.tryParse(val) ?? 0),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      "Si encontraste más quebrados en esta recolecta, anótalos aquí.",
-                      style: TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        decoration: const InputDecoration(
+                          hintText: 'Ej: 5',
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.heart_broken, color: Colors.red),
+                        ),
+                        keyboardType: TextInputType.number,
+                        onChanged: (val) => setState(() => _globalDamaged = int.tryParse(val) ?? 0),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        "Si encontraste más quebrados en esta recolecta, anótalos aquí.",
+                        style: TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
               
               const SizedBox(height: 32),
               const Divider(),
@@ -238,6 +254,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                   ? const CircularProgressIndicator(color: Colors.white)
                   : const Text('Guardar Producción del Día'),
               ),
+              const SizedBox(height: 80), // Padding extra para que el botón no quede pegado al fondo
             ],
           ),
         ),
@@ -270,8 +287,8 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
       ));
     }
 
-    // 2. Agregar los quebrados globales (si hay)
-    if (_globalDamaged > 0) {
+    // 2. Agregar los quebrados globales (si hay y el toggle está activo)
+    if (_showBrokenEggs && _globalDamaged > 0) {
       productionList.add(ProductionModel(
         productSizeId: null, // Global
         usefulQuantity: 0,
