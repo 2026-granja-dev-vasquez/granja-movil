@@ -17,7 +17,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
   int? _selectedSizeId;
   int _cartons = 0;
   int _units = 0;
-  int _globalDamaged = 0; 
+  int _globalDamaged = 0;
   DateTime _selectedDate = DateTime.now();
   bool _showBrokenEggs = false;
 
@@ -51,10 +51,21 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
     return Expanded(
       child: Column(
         children: [
-          Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10,
+              color: Colors.grey,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           Text(
             value.toString(),
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
             overflow: TextOverflow.ellipsis,
           ),
         ],
@@ -68,7 +79,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
     final productionProvider = context.watch<ProductionProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pao 2: Limpieza y Clasificación')),
+      appBar: AppBar(title: const Text('Paso 2: Limpieza y Clasificación')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Form(
@@ -80,22 +91,35 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: productionProvider.pendingEggs > 0 ? Colors.orange.shade50 : Colors.green.shade50,
+                  color: productionProvider.pendingEggs > 0
+                      ? Colors.orange.shade50
+                      : Colors.green.shade50,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: productionProvider.pendingEggs > 0 ? Colors.orange.shade200 : Colors.green.shade200),
+                  border: Border.all(
+                    color: productionProvider.pendingEggs > 0
+                        ? Colors.orange.shade200
+                        : Colors.green.shade200,
+                  ),
                 ),
                 child: Column(
                   children: [
                     Row(
                       children: [
                         Icon(
-                          productionProvider.pendingEggs > 0 ? Icons.warning_amber_rounded : Icons.check_circle_outline,
-                          color: productionProvider.pendingEggs > 0 ? Colors.orange.shade700 : Colors.green.shade700,
+                          productionProvider.pendingEggs > 0
+                              ? Icons.warning_amber_rounded
+                              : Icons.check_circle_outline,
+                          color: productionProvider.pendingEggs > 0
+                              ? Colors.orange.shade700
+                              : Colors.green.shade700,
                         ),
                         const SizedBox(width: 12),
                         const Text(
                           "Balance de Hoy",
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                       ],
                     ),
@@ -103,10 +127,27 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _balanceItem("TRAÍDO", productionProvider.totalRawCount, Colors.blue),
-                        _balanceItem("BUENOS", productionProvider.totalSortedCount - productionProvider.totalDailyDamaged, Colors.green),
-                        _balanceItem("QUEBRADOS", productionProvider.totalDailyDamaged, Colors.red),
-                        _balanceItem("PENDIENTE", productionProvider.pendingEggs, Colors.orange),
+                        _balanceItem(
+                          "TRAÍDO",
+                          productionProvider.totalRawCount,
+                          Colors.blue,
+                        ),
+                        _balanceItem(
+                          "BUENOS",
+                          productionProvider.totalSortedCount -
+                              productionProvider.totalDailyDamaged,
+                          Colors.green,
+                        ),
+                        _balanceItem(
+                          "QUEBRADOS",
+                          productionProvider.totalDailyDamaged,
+                          Colors.red,
+                        ),
+                        _balanceItem(
+                          "PENDIENTE",
+                          productionProvider.pendingEggs,
+                          Colors.orange,
+                        ),
                       ],
                     ),
                   ],
@@ -128,10 +169,16 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("Fecha de Clasificación", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          const Text(
+                            "Fecha de Clasificación",
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
                           Text(
                             DateFormat('dd / MM / yyyy').format(_selectedDate),
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -148,12 +195,15 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                 activeColor: Colors.red,
                 title: const Text(
                   '¿Hay huevos quebrados?',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
                 ),
                 value: _showBrokenEggs,
                 onChanged: (val) => setState(() => _showBrokenEggs = val),
               ),
-              
+
               if (_showBrokenEggs)
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -170,15 +220,29 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                         children: [
                           const Text(
                             'Nuevos Huevos Quebrados',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.red),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Colors.red,
+                            ),
                           ),
                           if (productionProvider.totalDailyDamaged > 0)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(8)),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                               child: Text(
                                 "Ya llevas: ${productionProvider.totalDailyDamaged}",
-                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                         ],
@@ -190,24 +254,42 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                           filled: true,
                           fillColor: Colors.white,
                           border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.heart_broken, color: Colors.red),
+                          prefixIcon: Icon(
+                            Icons.heart_broken,
+                            color: Colors.red,
+                          ),
                         ),
                         keyboardType: TextInputType.number,
-                        onChanged: (val) => setState(() => _globalDamaged = int.tryParse(val) ?? 0),
+                        onChanged: (val) => setState(
+                          () => _globalDamaged = int.tryParse(val) ?? 0,
+                        ),
                       ),
                     ],
                   ),
                 ),
-              
+
               const SizedBox(height: 32),
               const Divider(),
               const SizedBox(height: 16),
-              const Text('Clasificación por Talla (Buenos)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.green)),
+              const Text(
+                'Clasificación por Talla (Buenos)',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.green,
+                ),
+              ),
               const SizedBox(height: 16),
-              
+
               DropdownButtonFormField<int>(
-                decoration: const InputDecoration(labelText: '¿Qué tamaño estás guardando?'),
-                items: productProvider.sizes.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
+                decoration: const InputDecoration(
+                  labelText: '¿Qué tamaño estás guardando?',
+                ),
+                items: productProvider.sizes
+                    .map(
+                      (s) => DropdownMenuItem(value: s.id, child: Text(s.name)),
+                    )
+                    .toList(),
                 onChanged: (val) => setState(() => _selectedSizeId = val),
               ),
               if (_selectedSizeId != null)
@@ -215,22 +297,30 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                   padding: const EdgeInsets.only(top: 8, left: 4),
                   child: Text(
                     () {
-                      final alreadySorted = productionProvider.dailySortedProductions
+                      final alreadySorted = productionProvider
+                          .dailySortedProductions
                           .where((p) => p.productSizeId == _selectedSizeId)
                           .fold(0, (sum, p) => sum + p.usefulQuantity);
                       final cartons = alreadySorted ~/ 30;
                       final units = alreadySorted % 30;
                       return "💡 Ya clasificaste: $cartons cartones y $units hoy.";
                     }(),
-                    style: TextStyle(color: Colors.green.shade700, fontSize: 11, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.green.shade700,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               const SizedBox(height: 16),
               Row(
                 children: [
-                   Expanded(
+                  Expanded(
                     child: TextFormField(
-                      decoration: const InputDecoration(labelText: 'Cartones', helperText: 'De 30 huevos'),
+                      decoration: const InputDecoration(
+                        labelText: 'Cartones',
+                        helperText: 'De 30 huevos',
+                      ),
                       keyboardType: TextInputType.number,
                       onChanged: (val) => _cartons = int.tryParse(val) ?? 0,
                     ),
@@ -238,14 +328,17 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: TextFormField(
-                      decoration: const InputDecoration(labelText: 'Sueltos', helperText: 'Unidades'),
+                      decoration: const InputDecoration(
+                        labelText: 'Sueltos',
+                        helperText: 'Unidades',
+                      ),
                       keyboardType: TextInputType.number,
                       onChanged: (val) => _units = int.tryParse(val) ?? 0,
                     ),
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 32),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -254,34 +347,46 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                   foregroundColor: Colors.white,
                 ),
                 onPressed: productionProvider.isLoading ? null : _submit,
-                child: productionProvider.isLoading 
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('Guardar Clasificación'),
+                child: productionProvider.isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Guardar Clasificación'),
               ),
-              
+
               const SizedBox(height: 48),
               const Divider(),
               const SizedBox(height: 16),
-              const Text('Registros de Hoy', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text(
+                'Registros de Hoy',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
               const SizedBox(height: 16),
-              
+
               if (productionProvider.dailySortedProductions.isEmpty)
-                const Center(child: Text('No has clasificado nada hoy.', style: TextStyle(color: Colors.grey, fontSize: 12)))
+                const Center(
+                  child: Text(
+                    'No has clasificado nada hoy.',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                )
               else
                 ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: productionProvider.dailySortedProductions.length,
-                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  separatorBuilder: (context, index) =>
+                      const Divider(height: 1),
                   itemBuilder: (context, index) {
-                    final prod = productionProvider.dailySortedProductions[index];
+                    final prod =
+                        productionProvider.dailySortedProductions[index];
                     final isDamagedOnly = prod.productSizeId == null;
-                    
+
                     return ListTile(
                       dense: true,
                       contentPadding: EdgeInsets.zero,
                       leading: CircleAvatar(
-                        backgroundColor: isDamagedOnly ? Colors.red.shade50 : Colors.green.shade50,
+                        backgroundColor: isDamagedOnly
+                            ? Colors.red.shade50
+                            : Colors.green.shade50,
                         radius: 14,
                         child: Icon(
                           isDamagedOnly ? Icons.heart_broken : Icons.egg,
@@ -290,16 +395,22 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                         ),
                       ),
                       title: Text(
-                        isDamagedOnly ? "Solo Quebrados" : (prod.productSizeName ?? "Talla"),
+                        isDamagedOnly
+                            ? "Solo Quebrados"
+                            : (prod.productSizeName ?? "Talla"),
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       subtitle: Text(
-                        isDamagedOnly 
-                          ? "${prod.damagedQuantity} unidades"
-                          : "${prod.usefulQuantity ~/ 30} cartones y ${prod.usefulQuantity % 30} huevos",
+                        isDamagedOnly
+                            ? "${prod.damagedQuantity} unidades"
+                            : "${prod.usefulQuantity ~/ 30} cartones y ${prod.usefulQuantity % 30} huevos",
                       ),
                       trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                          size: 20,
+                        ),
                         onPressed: () => _confirmDelete(context, prod),
                       ),
                     );
@@ -313,17 +424,28 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context, ProductionModel prod) async {
+  Future<void> _confirmDelete(
+    BuildContext context,
+    ProductionModel prod,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('¿Eliminar registro?'),
-        content: const Text('Esto restará los huevos de tu stock actual para corregir el inventario.'),
+        content: const Text(
+          'Esto restará los huevos de tu stock actual para corregir el inventario.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Eliminar'),
           ),
         ],
@@ -332,57 +454,82 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
 
     if (confirmed == true && mounted) {
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-      final success = await context.read<ProductionProvider>().deleteSortedProduction(prod.id!, date: dateStr);
+      final success = await context
+          .read<ProductionProvider>()
+          .deleteSortedProduction(prod.id!, date: dateStr);
       if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registro eliminado y stock revertido.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registro eliminado y stock revertido.'),
+          ),
+        );
       }
     }
   }
 
   void _submit() async {
     final totalUseful = (_cartons * 30) + _units;
-    
+
     if (totalUseful <= 0 && _globalDamaged <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Debes poner alguna cantidad (Buenos o Quebrados)')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Debes poner alguna cantidad (Buenos o Quebrados)'),
+        ),
+      );
       return;
     }
 
     if (totalUseful > 0 && _selectedSizeId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona el tamaño de los huevos buenos')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecciona el tamaño de los huevos buenos'),
+        ),
+      );
       return;
     }
 
     final List<ProductionModel> productionList = [];
 
     if (totalUseful > 0) {
-      productionList.add(ProductionModel(
-        productSizeId: _selectedSizeId,
-        usefulQuantity: totalUseful,
-        damagedQuantity: 0,
-        date: _selectedDate,
-      ));
+      productionList.add(
+        ProductionModel(
+          productSizeId: _selectedSizeId,
+          usefulQuantity: totalUseful,
+          damagedQuantity: 0,
+          date: _selectedDate,
+        ),
+      );
     }
 
     if (_showBrokenEggs && _globalDamaged > 0) {
-      productionList.add(ProductionModel(
-        productSizeId: null,
-        usefulQuantity: 0,
-        damagedQuantity: _globalDamaged,
-        date: _selectedDate,
-      ));
+      productionList.add(
+        ProductionModel(
+          productSizeId: null,
+          usefulQuantity: 0,
+          damagedQuantity: _globalDamaged,
+          date: _selectedDate,
+        ),
+      );
     }
 
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    final success = await context.read<ProductionProvider>().addMultipleSortedProductions(
-      productionList, 
-      date: dateStr,
-    );
+    final success = await context
+        .read<ProductionProvider>()
+        .addMultipleSortedProductions(productionList, date: dateStr);
 
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registro guardado correctamente')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registro guardado correctamente')),
+      );
       Navigator.pop(context);
     } else if (mounted) {
-       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${context.read<ProductionProvider>().errorMessage}')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error: ${context.read<ProductionProvider>().errorMessage}',
+          ),
+        ),
+      );
     }
   }
 }
