@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -55,13 +56,16 @@ Future<void> main() async {
   );
 }
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 class MainApp extends StatelessWidget {
   const MainApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: dotenv.env['APP_NAME'] ?? 'Granja Avícola ERP',
+      navigatorKey: navigatorKey,
+      title: dotenv.env['APP_NAME'] ?? 'ERP Granja',
       debugShowCheckedModeBanner: false,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
@@ -107,12 +111,98 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  StreamSubscription<String?>? _notifSub;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ReminderProvider>().syncReminders();
     });
+
+    _notifSub = NotificationService().selectNotificationStream.stream.listen((payload) {
+      if (payload != null && mounted) {
+        _showPendingReminderDialog(payload);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _notifSub?.cancel();
+    super.dispose();
+  }
+
+  void _showPendingReminderDialog(String reminderId) {
+    if (!mounted) return;
+    final rId = int.tryParse(reminderId);
+    if (rId == null) return;
+
+    final provider = context.read<ReminderProvider>();
+    final reminder = provider.activeReminders.where((r) => r.id == rId).firstOrNull;
+
+    if (reminder == null) return;
+
+    final isAdmin = context.read<AuthProvider>().user?.role == 'admin';
+
+    showDialog(
+      context: navigatorKey.currentContext ?? context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Colors.orange, width: 3)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 36),
+            SizedBox(width: 8),
+            Expanded(child: Text("¡ATENCIÓN GRANJA!", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18))),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Tienes una tarea programada para este momento:", style: TextStyle(color: Colors.grey, fontSize: 13)),
+            const SizedBox(height: 12),
+            Text(reminder.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.indigo)),
+            if (reminder.description != null && reminder.description!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(reminder.description!, style: const TextStyle(fontSize: 14)),
+            ],
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: Colors.yellow.shade100, borderRadius: BorderRadius.circular(8)),
+              child: const Text("⚠️ Este recordatorio ha sido notificado a todo el equipo.", style: TextStyle(fontSize: 12, color: Colors.black87)),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("CERRAR AVISO", style: TextStyle(color: Colors.grey)),
+          ),
+          if (isAdmin)
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                try {
+                  final msg = await provider.markAsDone(reminder);
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.green));
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+              child: const Text("MARCAR COMO HECHO"),
+            )
+          else
+            const Padding(
+              padding: EdgeInsets.only(right: 8.0),
+              child: Text("Solo Administradores pueden completar.", style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic)),
+            ),
+        ],
+      ),
+    );
   }
 
   @override

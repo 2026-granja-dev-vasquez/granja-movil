@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -9,6 +10,9 @@ class NotificationService {
   NotificationService._internal();
 
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  
+  // Stream to listen to notification taps
+  final StreamController<String?> selectNotificationStream = StreamController<String?>.broadcast();
 
   Future<void> init() async {
     tz.initializeTimeZones();
@@ -30,8 +34,9 @@ class NotificationService {
 
     await _flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
-      onDidReceiveNotificationResponse: (response) {
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
         debugPrint('Notification clicked: ${response.payload}');
+        selectNotificationStream.add(response.payload);
       },
     );
 
@@ -67,6 +72,7 @@ class NotificationService {
         title: 'Próximo: $title',
         body: 'En 1 hora: $body',
         scheduledDate: preventiveTime,
+        payload: id.toString(),
       );
     }
 
@@ -77,6 +83,7 @@ class NotificationService {
         title: title,
         body: body,
         scheduledDate: scheduledDate,
+        payload: id.toString(),
       );
     }
   }
@@ -86,6 +93,7 @@ class NotificationService {
     required String title,
     required String body,
     required DateTime scheduledDate,
+    required String payload,
   }) async {
     await _flutterLocalNotificationsPlugin.zonedSchedule(
       id,
@@ -100,16 +108,21 @@ class NotificationService {
           importance: Importance.max,
           priority: Priority.high,
           playSound: true,
+          enableVibration: true,
+          ticker: 'Nueva tarea en Granja',
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
           presentSound: true,
+          presentBanner: true, // For foreground iOS alerts
+          presentList: true,
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.dateAndTime,
+      payload: payload,
     );
   }
 
