@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/customer_model.dart';
 import '../providers/customer_provider.dart';
 import 'add_customer_screen.dart';
+import 'sale_list_screen.dart';
 
 class CustomersScreen extends StatefulWidget {
   const CustomersScreen({super.key});
@@ -118,7 +119,15 @@ class _CustomersScreenState extends State<CustomersScreen> {
                                 ],
                               ),
                               onTap: () {
-                                // Aquí se podría navegar al historial de ventas de este cliente en el futuro
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => SaleListScreen(
+                                      customerId: customer.id,
+                                      customerName: customer.name,
+                                    ),
+                                  ),
+                                );
                               },
                             ),
                           );

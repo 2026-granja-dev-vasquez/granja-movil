@@ -11,11 +11,18 @@ class SaleService {
     return await _storage.read(key: 'auth_token');
   }
 
-  Future<List<SaleModel>> getSales() async {
+  Future<List<SaleModel>> getSales({int? customerId, String? startDate, String? endDate}) async {
     final token = await _getToken();
-    final url = Uri.parse('${ApiConstants.baseUrl}/sales');
+    
+    // Construir URL con parámetros
+    final queryParams = <String, String>{};
+    if (customerId != null) queryParams['customer_id'] = customerId.toString();
+    if (startDate != null) queryParams['start_date'] = startDate;
+    if (endDate != null) queryParams['end_date'] = endDate;
 
-    final response = await http.get(url, headers: {
+    final uri = Uri.parse('${ApiConstants.baseUrl}/sales').replace(queryParameters: queryParams);
+
+    final response = await http.get(uri, headers: {
       'Authorization': 'Bearer $token',
       'Accept': 'application/json',
     });
@@ -64,5 +71,28 @@ class SaleService {
       return SaleModel.fromJson(jsonDecode(response.body));
     }
     throw Exception('Error al obtener detalles de la venta');
+  }
+
+  Future<SaleModel> updateSale(int id, Map<String, dynamic> data) async {
+    final token = await _getToken();
+    final url = Uri.parse('${ApiConstants.baseUrl}/sales/$id');
+
+    final response = await http.put(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+      return SaleModel.fromJson(decoded['sale']);
+    } else {
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['message'] ?? 'Error al actualizar venta');
+    }
   }
 }

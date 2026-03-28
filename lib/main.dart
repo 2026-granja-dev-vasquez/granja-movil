@@ -16,6 +16,8 @@ import 'features/sales/providers/customer_provider.dart';
 import 'features/sales/providers/sale_provider.dart';
 import 'features/sales/views/customers_screen.dart';
 import 'features/sales/views/add_sale_screen.dart';
+import 'features/sales/views/sale_list_screen.dart';
+import 'features/sales/views/accounts_receivable_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -202,7 +204,6 @@ class DashboardPlaceholder extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: ElevatedButton.icon(
@@ -220,6 +221,50 @@ class DashboardPlaceholder extends StatelessWidget {
                 icon: const Icon(Icons.shopping_cart_outlined),
                 label: const Text(
                   'Nueva Venta',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 56),
+                  backgroundColor: Colors.teal,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SaleListScreen(),
+                  ),
+                ),
+                icon: const Icon(Icons.history),
+                label: const Text(
+                  'Diario de Ventas',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 56),
+                  backgroundColor: Colors.red.shade700,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AccountsReceivableScreen(),
+                  ),
+                ),
+                icon: const Icon(Icons.monetization_on_outlined),
+                label: const Text(
+                  'Cobros / Cuentas x Cobrar',
                   style: TextStyle(fontSize: 16),
                 ),
               ),

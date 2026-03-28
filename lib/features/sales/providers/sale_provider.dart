@@ -13,13 +13,17 @@ class SaleProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  Future<void> fetchSales() async {
+  Future<void> fetchSales({int? customerId, String? startDate, String? endDate}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _sales = await _service.getSales();
+      _sales = await _service.getSales(
+        customerId: customerId,
+        startDate: startDate,
+        endDate: endDate,
+      );
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -53,6 +57,30 @@ class SaleProvider with ChangeNotifier {
       _errorMessage = e.toString();
       notifyListeners();
       return null;
+    }
+  }
+
+  Future<bool> updateSaleStatus(int id, Map<String, dynamic> data) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final updatedSale = await _service.updateSale(id, data);
+      
+      // Actualizar en la lista local
+      final index = _sales.indexWhere((s) => s.id == id);
+      if (index != -1) {
+        _sales[index] = updatedSale;
+      }
+      
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 }
