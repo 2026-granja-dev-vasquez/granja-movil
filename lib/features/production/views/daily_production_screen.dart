@@ -1,0 +1,443 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import '../providers/production_provider.dart';
+import '../../batches/providers/batch_provider.dart';
+import '../../products/providers/product_provider.dart';
+import 'add_batch_collection_screen.dart';
+import 'add_sorting_screen.dart';
+
+class DailyProductionScreen extends StatefulWidget {
+  const DailyProductionScreen({super.key});
+
+  @override
+  State<DailyProductionScreen> createState() => _DailyProductionScreenState();
+}
+
+class _DailyProductionScreenState extends State<DailyProductionScreen> {
+  DateTimeRange? _selectedRange;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProductionProvider>().fetchDailyData();
+      context.read<BatchProvider>().fetchBatches();
+      context.read<ProductProvider>().fetchSizes();
+    });
+  }
+
+  Future<void> _selectSearchRange() async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2025),
+      lastDate: DateTime.now(),
+      initialDateRange: _selectedRange,
+      locale: const Locale('es', 'GT'),
+      initialEntryMode: DatePickerEntryMode.calendar, // VISTA DE CALENDARIO DIRECTA
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Colors.orange.shade700,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    
+    if (picked != null) {
+      setState(() => _selectedRange = picked);
+      if (mounted) {
+        context.read<ProductionProvider>().fetchSummaryReport(picked.start, picked.end);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Producción Diaria'),
+          actions: [
+            if (_selectedRange != null)
+              IconButton(
+                icon: const Icon(Icons.history_toggle_off),
+                tooltip: 'Regresar a Vista Diaria',
+                onPressed: () {
+                  setState(() => _selectedRange = null);
+                  context.read<ProductionProvider>().fetchDailyData();
+                },
+              ),
+            IconButton(
+              icon: const Icon(Icons.date_range),
+              tooltip: 'Buscar Rango de Fechas',
+              onPressed: _selectSearchRange,
+            ),
+          ],
+          bottom: const TabBar(
+            isScrollable: true,
+            tabs: [
+              Tab(icon: Icon(Icons.assessment), text: 'Producción del Día'),
+              Tab(
+                icon: Icon(Icons.shopping_basket),
+                text: 'Traído de Galeras',
+              ),
+              Tab(
+                icon: Icon(Icons.cleaning_services),
+                text: 'Historial Limpieza',
+              ),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            const DailyProductionComparisonTab(),
+            RawCollectionsTab(isFiltered: _selectedRange != null),
+            SortedHistoryTab(isFiltered: _selectedRange != null),
+          ],
+        ),
+        floatingActionButton: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            FloatingActionButton.extended(
+              heroTag: 'btn1',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AddBatchCollectionScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.add_shopping_cart),
+              label: const Text('Paso 1: Recoger Huevos'),
+              backgroundColor: Colors.blue,
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton.extended(
+              heroTag: 'btn2',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AddSortingScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.grading),
+              label: const Text('Paso 2: Clasificar'),
+              backgroundColor: Colors.green,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class DailyProductionComparisonTab extends StatelessWidget {
+  const DailyProductionComparisonTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<ProductionProvider>();
+
+    if (provider.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (provider.errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                "Error al cargar datos:\n${provider.errorMessage}",
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
+              ),
+              ElevatedButton(
+                onPressed: () => provider.fetchDailyData(),
+                child: const Text("Reintentar"),
+              )
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (provider.dailyReports.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: () => provider.fetchDailyData(),
+        child: ListView(
+          children: const [
+            SizedBox(height: 100),
+            Center(
+              child: Text(
+                "Sin producción registrada en este periodo.\n(Mostrando últimos 3 días)",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () => provider.fetchDailyData(),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: provider.dailyReports.length,
+        itemBuilder: (context, index) {
+          final dayReport = provider.dailyReports[index];
+          final dateStr = DateFormat("EEEE d 'de' MMMM", 'es').format(dayReport.date);
+          final fullDateStr = dateStr[0].toUpperCase() + dateStr.substring(1);
+
+          final bool isEmpty = dayReport.report.isEmpty;
+          
+          return Card(
+            margin: const EdgeInsets.only(bottom: 24),
+            elevation: isEmpty ? 1 : 4,
+            color: isEmpty ? Colors.grey.shade50 : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: isEmpty ? BorderSide(color: Colors.grey.shade300) : BorderSide.none,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Cabecera de la Tarjeta Diaria
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isEmpty ? Colors.grey.shade400 : Colors.orange.shade700,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          fullDateStr,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      if (!isEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            "Total: ${dayReport.report.fold(0, (sum, i) => sum + i.totalUnits)} huevos",
+                            style: TextStyle(
+                              color: Colors.orange.shade800,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Icon(Icons.egg_outlined, color: Colors.grey, size: 40),
+                          SizedBox(height: 8),
+                          Text(
+                            "Sin producción registrada :(",
+                            style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else ...[
+                  // Resumen de Quebrados
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Huevos Quebrados: ${dayReport.totalDamaged}",
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(),
+                  // Detalle por Tamaños
+                  ...dayReport.report.map((item) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.egg, color: Colors.orange, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            item.productSize,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        Text(
+                          item.formatted,
+                          style: const TextStyle(color: Colors.blueGrey),
+                        ),
+                      ],
+                    ),
+                  )),
+                ],
+                const SizedBox(height: 16),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class RawCollectionsTab extends StatelessWidget {
+  final bool isFiltered;
+  const RawCollectionsTab({super.key, required this.isFiltered});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<ProductionProvider>();
+
+    if (provider.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (provider.batchCollections.isEmpty) {
+      return const Center(
+        child: Text('Aún no has traído nada de las galeras.'),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () => provider.fetchDailyData(),
+      child: Column(
+        children: [
+          if (!isFiltered) 
+           const Padding(
+             padding: EdgeInsets.symmetric(vertical: 8.0),
+             child: Text("Mostrando últimos 3 días", style: TextStyle(color: Colors.grey, fontSize: 12)),
+           ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: provider.batchCollections.length,
+              itemBuilder: (context, index) {
+                final item = provider.batchCollections[index];
+                final cartons = item.quantity ~/ 30;
+                final leftover = item.quantity % 30;
+                final formatted = cartons > 0
+                    ? "$cartons cartones y $leftover huevos"
+                    : "$leftover huevos";
+                final dateStr = DateFormat('dd/MM').format(item.date);
+            
+                return Card(
+                  child: ListTile(
+                    title: Text('Lote: ${item.batchName}'),
+                    subtitle: Text('Traído ($dateStr): $formatted'),
+                    trailing: const Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.blue,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SortedHistoryTab extends StatelessWidget {
+  final bool isFiltered;
+  const SortedHistoryTab({super.key, required this.isFiltered});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<ProductionProvider>();
+
+    if (provider.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (provider.sortedProductions.isEmpty) {
+      return const Center(child: Text('Historial de limpieza vacío.'));
+    }
+
+    return RefreshIndicator(
+      onRefresh: () => provider.fetchDailyData(),
+      child: Column(
+        children: [
+          if (!isFiltered) 
+           const Padding(
+             padding: EdgeInsets.symmetric(vertical: 8.0),
+             child: Text("Mostrando última semana", style: TextStyle(color: Colors.grey, fontSize: 12)),
+           ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: provider.sortedProductions.length,
+              itemBuilder: (context, index) {
+                final item = provider.sortedProductions[index];
+                final dateStr = DateFormat('dd/MM').format(item.date);
+            
+                return Card(
+                  child: ListTile(
+                    title: Text(
+                      '${item.productSizeName}: ${item.formattedCollection}',
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Fecha: $dateStr',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.blueGrey,
+                          ),
+                        ),
+                        if (item.damagedQuantity > 0)
+                          Text(
+                            'Quebrados: ${item.damagedQuantity}',
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                      ],
+                    ),
+                    trailing: const Icon(Icons.inventory, color: Colors.green),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

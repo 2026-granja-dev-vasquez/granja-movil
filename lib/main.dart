@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/views/login_screen.dart';
 import 'features/batches/providers/batch_provider.dart';
@@ -8,9 +10,13 @@ import 'features/batches/views/batch_list_screen.dart';
 import 'features/products/providers/product_provider.dart';
 import 'features/products/views/product_config_screen.dart';
 
+import 'features/production/providers/production_provider.dart';
+import 'features/production/views/daily_production_screen.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+  await initializeDateFormatting('es_GT', null);
 
   runApp(
     MultiProvider(
@@ -18,6 +24,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()..tryAutoLogin()),
         ChangeNotifierProvider(create: (_) => BatchProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
+        ChangeNotifierProvider(create: (_) => ProductionProvider()),
       ],
       child: const MainApp(),
     ),
@@ -32,6 +39,15 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       title: dotenv.env['APP_NAME'] ?? 'Granja Avícola ERP',
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('es', 'GT'),
+        Locale('en', 'US'),
+      ],
       theme: ThemeData(
         useMaterial3: true,
         primarySwatch: Colors.orange,
@@ -67,7 +83,7 @@ class DashboardPlaceholder extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        title: const Text('Menu Principal'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -125,15 +141,42 @@ class DashboardPlaceholder extends StatelessWidget {
                 ),
                 onPressed: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const ProductConfigScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const ProductConfigScreen(),
+                  ),
                 ),
                 icon: const Icon(Icons.settings_outlined),
-                label: const Text('Configuración de Precios', style: TextStyle(fontSize: 16)),
+                label: const Text(
+                  'Tamaño y precio de huevos',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 56),
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const DailyProductionScreen(),
+                  ),
+                ),
+                icon: const Icon(Icons.egg_outlined),
+                label: const Text(
+                  'Producción Diaria',
+                  style: TextStyle(fontSize: 16),
+                ),
               ),
             ),
             const SizedBox(height: 32),
             const Text(
-              'Módulo 1, 2 & 3 funcionales.',
+              'Módulo 1, 2, 3 & 4 operativos.',
               style: TextStyle(
                 color: Colors.green,
                 fontWeight: FontWeight.bold,

@@ -58,6 +58,7 @@ class _BatchFormScreenState extends State<BatchFormScreen> {
                     initialDate: _selectedDate,
                     firstDate: DateTime(2020),
                     lastDate: DateTime.now(),
+                    initialEntryMode: DatePickerEntryMode.input,
                   );
                   if (picked != null) setState(() => _selectedDate = picked);
                 },

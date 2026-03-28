@@ -32,9 +32,11 @@
 - [x] Asignación de precios fijos por tamaño.
 - [x] Interfaz de administración de precios en tiempo real.
 
-### Módulo 4: Producción y Recolección Diaria
-- [ ] Interfaz de ingreso de recolección (por lote, huevos útiles, mermas).
-- [ ] Lógica de consolidación automática (Suma total -> Conversión a cartones de 30).
+### Módulo 4: Producción y Recolección Diaria [COMPLETADO]
+- [x] Interfaz de ingreso de recolección (por lote, huevos útiles, mermas).
+- [x] Lógica de consolidación automática (Suma Total -> Conversión a cartones de 30).
+- [x] Soporte para múltiples recolectas diarias (N veces) según el lote.
+- [x] Dashboard de Inventario Consolidado en tiempo real.
 
 ### Módulo 5: Caja y Finanzas
 - [ ] Registro de ingresos (ventas por cartón/unidad).

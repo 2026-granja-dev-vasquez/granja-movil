@@ -11,7 +11,7 @@ class BatchService {
   Future<List<Map<String, dynamic>>> getBatches() async {
     final token = await _getToken();
     final response = await http.get(
-      Uri.parse(ApiConstants.baseUrl + '/batches'),
+      Uri.parse('${ApiConstants.baseUrl}/batches'),
       headers: {
         'Authorization': 'Bearer $token',
         'Accept': 'application/json',
@@ -27,7 +27,7 @@ class BatchService {
   Future<Map<String, dynamic>> createBatch(Map<String, dynamic> data) async {
     final token = await _getToken();
     final response = await http.post(
-      Uri.parse(ApiConstants.baseUrl + '/batches'),
+      Uri.parse('${ApiConstants.baseUrl}/batches'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
