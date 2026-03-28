@@ -22,16 +22,16 @@ class _BatchListScreenState extends State<BatchListScreen> {
     });
   }
 
-  Future<void> _confirmCloseBatch(BuildContext context, BatchModel batch) async {
+  Future<void> _confirmCloseBatch(BatchModel batch) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('¿Finalizar Lote?'),
         content: Text('Esto marcará el lote "${batch.name}" como inactivo. Ya no aparecerá en las recolecciones diarias.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
             child: const Text('Finalizar'),
           ),
@@ -139,13 +139,13 @@ class _BatchListScreenState extends State<BatchListScreen> {
                         children: [
                           if (isActive) ...[
                             TextButton.icon(
-                              onPressed: () => _confirmCloseBatch(context, batch),
+                              onPressed: () => _confirmCloseBatch(batch),
                               icon: const Icon(Icons.stop_circle_outlined, color: Colors.orange, size: 18),
                               label: const Text('Finalizar', style: TextStyle(color: Colors.orange, fontSize: 12)),
                             ),
                             const Spacer(),
                             TextButton.icon(
-                              onPressed: () => _showMortalityDialog(context, batch.id),
+                              onPressed: () => _showMortalityDialog(batch.id),
                               icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 18),
                               label: const Text('Baja', style: TextStyle(color: Colors.red, fontSize: 12)),
                             ),
@@ -181,7 +181,7 @@ class _BatchListScreenState extends State<BatchListScreen> {
     );
   }
 
-  void _showMortalityDialog(BuildContext context, int batchId) {
+  void _showMortalityDialog(int batchId) {
     showDialog(
       context: context,
       builder: (_) => MortalityDialog(batchId: batchId),
