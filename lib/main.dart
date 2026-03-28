@@ -24,11 +24,17 @@ import 'features/inventory/views/product_stock_screen.dart';
 import 'features/cash/views/cash_box_screen.dart';
 import 'features/users/views/user_list_screen.dart';
 import 'features/users/views/profile_screen.dart';
+import 'core/services/notification_service.dart';
+import 'features/reminders/providers/reminder_provider.dart';
+import 'features/reminders/views/reminder_list_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await initializeDateFormatting('es_GT', null);
+  
+  // Initialize local notifications and timezone
+  await NotificationService().init();
 
   runApp(
     MultiProvider(
@@ -42,6 +48,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => InventoryProvider()),
         ChangeNotifierProvider(create: (_) => CashProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => ReminderProvider()),
       ],
       child: const MainApp(),
     ),
@@ -92,8 +99,21 @@ class MainApp extends StatelessWidget {
   }
 }
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ReminderProvider>().syncReminders();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -287,6 +307,14 @@ class AppDrawer extends StatelessWidget {
                   label: 'Mi Perfil',
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
                 ),
+                
+                // RECORDATORIOS COMPARTIDOS
+                _DrawerItem(
+                  icon: Icons.notifications_active_outlined,
+                  label: 'Recordatorios de Granja',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReminderListScreen())),
+                ),
+                
                 const Divider(),
 
                 // OPERACIONES DIARIAS
