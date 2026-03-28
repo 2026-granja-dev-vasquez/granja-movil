@@ -210,7 +210,9 @@ class _SaleListScreenState extends State<SaleListScreen> {
   Widget _buildDailySummaryCard(DateTime date, List<SaleModel> daySales, DateFormat dayFormatter, DateFormat formatter) {
     // Calcular agregados por tamaño para el día
     final Map<String, int> aggregates = {};
+    double totalDayMoney = 0;
     for (var sale in daySales) {
+      totalDayMoney += sale.totalAmount;
       for (var item in sale.items) {
         final sizeName = item.productSize?.name ?? "Desconocido";
         aggregates[sizeName] = (aggregates[sizeName] ?? 0) + item.quantity;
@@ -237,9 +239,16 @@ class _SaleListScreenState extends State<SaleListScreen> {
                   dayFormatter.format(date).toLowerCase(),
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.indigo),
                 ),
-                Text(
-                  "${daySales.length} ventas",
-                  style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade700,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    "Q${totalDayMoney.toStringAsFixed(2)}",
+                    style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
@@ -317,12 +326,42 @@ class _SaleListScreenState extends State<SaleListScreen> {
   }
 
   Widget _buildMiniSaleTile(SaleModel sale, DateFormat formatter) {
+    final bool isPaid = sale.status == SaleStatus.paid;
+    
+    // Crear un resumen corto de los productos comprados
+    String itemsSummary = sale.items.map((i) {
+      final size = i.productSize?.name ?? "?";
+      final cartons = i.quantity ~/ 30;
+      final units = i.quantity % 30;
+      if (cartons > 0 && units > 0) return "$size ($cartons c. $units u.)";
+      if (cartons > 0) return "$size ($cartons c.)";
+      return "$size ($units u.)";
+    }).join(", ");
+
+    if (itemsSummary.length > 35) {
+      itemsSummary = "${itemsSummary.substring(0, 32)}...";
+    }
+
     return ListTile(
       dense: true,
-      leading: const Icon(Icons.receipt_long, size: 16, color: Colors.grey),
-      title: Text(sale.customer?.name ?? "Consumidor Final", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-      subtitle: Text(DateFormat('HH:mm').format(sale.date), style: const TextStyle(fontSize: 11)),
-      trailing: Text("Q${sale.totalAmount.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+      visualDensity: VisualDensity.compact,
+      leading: Icon(
+        isPaid ? Icons.check_circle_outline : Icons.access_time, 
+        size: 14, 
+        color: isPaid ? Colors.green : Colors.orange
+      ),
+      title: Text(
+        sale.customer?.name ?? "Consumidor Final", 
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)
+      ),
+      subtitle: Text(
+        itemsSummary, 
+        style: TextStyle(fontSize: 11, color: Colors.blueGrey.shade600, fontWeight: FontWeight.w500)
+      ),
+      trailing: Text(
+        "Q${sale.totalAmount.toStringAsFixed(2)}", 
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.indigo)
+      ),
       onTap: () {
         Navigator.push(
           context,

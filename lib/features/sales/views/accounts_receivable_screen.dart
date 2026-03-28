@@ -59,7 +59,7 @@ class _AccountsReceivableScreenState extends State<AccountsReceivableScreen> {
                     final customerName = invoices.first.customer?.name ?? "Consumidor Final (Sin nombre)";
                     final totalDebt = invoices.fold<double>(0, (sum, item) => sum + (item.totalAmount - item.paidAmount));
 
-                    return _buildCustomerDebtCard(context, customerName, totalDebt, invoices);
+                    return _buildCustomerDebtCard(customerName, totalDebt, invoices);
                   },
                 ),
     );
@@ -82,7 +82,7 @@ class _AccountsReceivableScreenState extends State<AccountsReceivableScreen> {
     );
   }
 
-  Widget _buildCustomerDebtCard(BuildContext context, String name, double total, List<SaleModel> invoices) {
+  Widget _buildCustomerDebtCard(String name, double total, List<SaleModel> invoices) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 0,
@@ -98,12 +98,12 @@ class _AccountsReceivableScreenState extends State<AccountsReceivableScreen> {
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text("Deuda Total: Q${total.toStringAsFixed(2)}", style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-        children: invoices.map((sale) => _buildInvoiceItem(context, sale)).toList(),
+        children: invoices.map((sale) => _buildInvoiceItem(sale)).toList(),
       ),
     );
   }
 
-  Widget _buildInvoiceItem(BuildContext context, SaleModel sale) {
+  Widget _buildInvoiceItem(SaleModel sale) {
     return ListTile(
       dense: true,
       title: Text("Venta del ${DateFormat('dd/MM/yyyy').format(sale.date)}"),
@@ -114,7 +114,7 @@ class _AccountsReceivableScreenState extends State<AccountsReceivableScreen> {
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 12),
         ),
-        onPressed: () => _markAsPaid(context, sale),
+        onPressed: () => _markAsPaid(sale),
         child: const Text("COBRAR", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
       ),
       onTap: () {
@@ -126,15 +126,15 @@ class _AccountsReceivableScreenState extends State<AccountsReceivableScreen> {
     );
   }
 
-  Future<void> _markAsPaid(BuildContext context, SaleModel sale) async {
+  Future<void> _markAsPaid(SaleModel sale) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text("Confirmar Cobro"),
         content: Text("¿Deseas marcar la venta de Q${sale.totalAmount.toStringAsFixed(2)} como totalmente PAGADA?"),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancelar")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Sí, Cobrar")),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text("Cancelar")),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text("Sí, Cobrar")),
         ],
       ),
     );
