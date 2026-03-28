@@ -13,7 +13,9 @@ import 'features/products/views/product_config_screen.dart';
 import 'features/production/providers/production_provider.dart';
 import 'features/production/views/daily_production_screen.dart';
 import 'features/sales/providers/customer_provider.dart';
+import 'features/sales/providers/sale_provider.dart';
 import 'features/sales/views/customers_screen.dart';
+import 'features/sales/views/add_sale_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +30,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => ProductionProvider()),
         ChangeNotifierProvider(create: (_) => CustomerProvider()),
+        ChangeNotifierProvider(create: (_) => SaleProvider()),
       ],
       child: const MainApp(),
     ),
@@ -195,6 +198,28 @@ class DashboardPlaceholder extends StatelessWidget {
                 icon: const Icon(Icons.people_outline),
                 label: const Text(
                   'Gestión de Clientes',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 56),
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AddSaleScreen(),
+                  ),
+                ),
+                icon: const Icon(Icons.shopping_cart_outlined),
+                label: const Text(
+                  'Nueva Venta',
                   style: TextStyle(fontSize: 16),
                 ),
               ),
