@@ -41,6 +41,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
         title: const Text('Gestión de Clientes'),
         backgroundColor: Colors.indigo,
         foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
