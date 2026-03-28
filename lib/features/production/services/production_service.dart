@@ -148,6 +148,19 @@ class ProductionService {
     if (response.statusCode != 201) throw Exception('Error al clasificar producción');
   }
 
+  Future<void> deleteSortedProduction(int id) async {
+    final token = await _getToken();
+    final response = await http.delete(
+      Uri.parse('${ApiConstants.baseUrl}/productions/$id'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode != 200) throw Exception('Error al eliminar registro');
+  }
+
   Future<List<DailySummaryReport>> getInventorySummary({String? date, String? startDate, String? endDate}) async {
     final token = await _getToken();
     final url = Uri.parse('${ApiConstants.baseUrl}/productions/summary').replace(queryParameters: {

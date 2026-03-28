@@ -31,6 +31,7 @@ class ProductionProvider with ChangeNotifier {
   List<DailySummaryReport> get dailyReports => _dailyReports;
   List<DailyBatchSummary> get batchSummaries => _batchSummaries;
   List<InventoryModel> get inventoryStatus => _inventoryStatus;
+  List<ProductionModel> get dailySortedProductions => _dailySortedProductions;
   
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -141,17 +142,33 @@ class ProductionProvider with ChangeNotifier {
   }
 
   Future<bool> addSortedProduction(ProductionModel model) async {
-    return await addMultipleSortedProductions([model]);
+    return await addMultipleSortedProductions([model], date: DateFormat('yyyy-MM-dd').format(model.date));
   }
 
-  Future<bool> addMultipleSortedProductions(List<ProductionModel> models) async {
+  Future<bool> addMultipleSortedProductions(List<ProductionModel> models, {String? date}) async {
     _isLoading = true;
     notifyListeners();
     try {
       for (var model in models) {
         await _service.createSortedProduction(model);
       }
-      await fetchDailyData();
+      await fetchDailyData(date: date);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> deleteSortedProduction(int id, {String? date}) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _service.deleteSortedProduction(id);
+      await fetchDailyData(date: date);
       return true;
     } catch (e) {
       _errorMessage = e.toString();
