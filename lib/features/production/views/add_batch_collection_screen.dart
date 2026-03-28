@@ -101,7 +101,7 @@ class _AddBatchCollectionScreenState extends State<AddBatchCollectionScreen> {
                 decoration: const InputDecoration(
                   labelText: '¿De qué lote son?',
                 ),
-                items: batchProvider.batches
+                items: batchProvider.activeBatches
                     .map(
                       (b) => DropdownMenuItem(value: b.id, child: Text(b.name)),
                     )

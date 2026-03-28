@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/production_model.dart';
+import '../models/inventory_model.dart';
 import '../services/production_service.dart';
 
 class ProductionProvider with ChangeNotifier {
@@ -14,6 +15,9 @@ class ProductionProvider with ChangeNotifier {
   // Lista de Reportes Diarios para Comparación
   List<DailySummaryReport> _dailyReports = [];
   List<DailyBatchSummary> _batchSummaries = [];
+  
+  // Inventario Actual (Stock Neto)
+  List<InventoryModel> _inventoryStatus = [];
 
   // Datos del día seleccionado (Para el balance/banner)
   List<BatchCollectionModel> _dailyBatchCollections = [];
@@ -26,6 +30,7 @@ class ProductionProvider with ChangeNotifier {
   List<ProductionModel> get sortedProductions => _sortedProductions;
   List<DailySummaryReport> get dailyReports => _dailyReports;
   List<DailyBatchSummary> get batchSummaries => _batchSummaries;
+  List<InventoryModel> get inventoryStatus => _inventoryStatus;
   
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -60,6 +65,9 @@ class ProductionProvider with ChangeNotifier {
       _dailyReports = await _service.getInventorySummary(startDate: threeDaysAgo, endDate: targetDate);
       _batchSummaries = await _service.getBatchSummary(startDate: threeDaysAgo, endDate: targetDate);
       
+      // 4. Inventario Actual Neto
+      _inventoryStatus = await _service.getInventoryStatus();
+      
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -78,6 +86,7 @@ class ProductionProvider with ChangeNotifier {
       
       _dailyReports = await _service.getInventorySummary(startDate: startStr, endDate: endStr);
       _batchSummaries = await _service.getBatchSummary(startDate: startStr, endDate: endStr);
+      _inventoryStatus = await _service.getInventoryStatus();
       
       // Sincronizar otros listados
       _batchCollections = await _service.getBatchCollections(startDate: startStr);
@@ -99,6 +108,7 @@ class ProductionProvider with ChangeNotifier {
       
       _dailyReports = await _service.getInventorySummary(date: dateStr);
       _batchSummaries = await _service.getBatchSummary(date: dateStr);
+      _inventoryStatus = await _service.getInventoryStatus();
       
       _batchCollections = await _service.getBatchCollections(date: dateStr);
       _sortedProductions = await _service.getSortedProductions(date: dateStr);

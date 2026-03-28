@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/batch_model.dart';
 import '../providers/batch_provider.dart';
 import 'batch_form_screen.dart';
+import 'mortality_history_screen.dart';
 import 'widgets/mortality_dialog.dart';
 
 class BatchListScreen extends StatefulWidget {
@@ -18,6 +20,33 @@ class _BatchListScreenState extends State<BatchListScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<BatchProvider>().fetchBatches();
     });
+  }
+
+  Future<void> _confirmCloseBatch(BuildContext context, BatchModel batch) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('¿Finalizar Lote?'),
+        content: Text('Esto marcará el lote "${batch.name}" como inactivo. Ya no aparecerá en las recolecciones diarias.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+            child: const Text('Finalizar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await context.read<BatchProvider>().closeBatch(batch.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lote "${batch.name}" finalizado.')),
+        );
+      }
+    }
   }
 
   @override
@@ -51,6 +80,8 @@ class _BatchListScreenState extends State<BatchListScreen> {
             itemCount: provider.batches.length,
             itemBuilder: (context, index) {
               final batch = provider.batches[index];
+              final isActive = batch.status == 'active';
+
               return Card(
                 elevation: 4,
                 margin: const EdgeInsets.only(bottom: 16),
@@ -65,11 +96,27 @@ class _BatchListScreenState extends State<BatchListScreen> {
                         children: [
                           Text(
                             batch.name,
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 18, 
+                              fontWeight: FontWeight.bold,
+                              decoration: isActive ? null : TextDecoration.lineThrough,
+                              color: isActive ? Colors.black87 : Colors.grey,
+                            ),
                           ),
-                          Chip(
-                            label: Text(batch.status.toUpperCase()),
-                            backgroundColor: batch.status == 'active' ? Colors.green.shade100 : Colors.grey.shade200,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isActive ? Colors.green.shade100 : Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              isActive ? 'ACTIVO' : 'FINALIZADO',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isActive ? Colors.green.shade800 : Colors.grey.shade600,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -78,7 +125,7 @@ class _BatchListScreenState extends State<BatchListScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           _StatItem(label: 'Inicial', value: batch.initialQuantity.toString()),
-                          _StatItem(label: 'Vivos', value: batch.currentQuantity.toString(), color: Colors.orange),
+                          _StatItem(label: 'Vivos', value: batch.currentQuantity.toString(), color: isActive ? Colors.blue : Colors.grey),
                           _StatItem(
                             label: 'Bajas', 
                             value: (batch.initialQuantity - batch.currentQuantity).toString(),
@@ -90,10 +137,28 @@ class _BatchListScreenState extends State<BatchListScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
+                          if (isActive) ...[
+                            TextButton.icon(
+                              onPressed: () => _confirmCloseBatch(context, batch),
+                              icon: const Icon(Icons.stop_circle_outlined, color: Colors.orange, size: 18),
+                              label: const Text('Finalizar', style: TextStyle(color: Colors.orange, fontSize: 12)),
+                            ),
+                            const Spacer(),
+                            TextButton.icon(
+                              onPressed: () => _showMortalityDialog(context, batch.id),
+                              icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 18),
+                              label: const Text('Baja', style: TextStyle(color: Colors.red, fontSize: 12)),
+                            ),
+                          ],
                           TextButton.icon(
-                            onPressed: () => _showMortalityDialog(context, batch.id),
-                            icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                            label: const Text('Registrar Baja', style: TextStyle(color: Colors.red)),
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => MortalityHistoryScreen(batchId: batch.id, batchName: batch.name),
+                              ),
+                            ),
+                            icon: const Icon(Icons.history, color: Colors.blueGrey, size: 18),
+                            label: const Text('Historial', style: TextStyle(color: Colors.blueGrey, fontSize: 12)),
                           ),
                         ],
                       ),

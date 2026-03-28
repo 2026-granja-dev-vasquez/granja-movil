@@ -35,7 +35,8 @@ class _DailyProductionScreenState extends State<DailyProductionScreen> {
       lastDate: DateTime.now(),
       initialDateRange: _selectedRange,
       locale: const Locale('es', 'GT'),
-      initialEntryMode: DatePickerEntryMode.calendar, // VISTA DE CALENDARIO DIRECTA
+      initialEntryMode:
+          DatePickerEntryMode.calendar, // VISTA DE CALENDARIO DIRECTA
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -49,11 +50,14 @@ class _DailyProductionScreenState extends State<DailyProductionScreen> {
         );
       },
     );
-    
+
     if (picked != null) {
       setState(() => _selectedRange = picked);
       if (mounted) {
-        context.read<ProductionProvider>().fetchSummaryReport(picked.start, picked.end);
+        context.read<ProductionProvider>().fetchSummaryReport(
+          picked.start,
+          picked.end,
+        );
       }
     }
   }
@@ -85,14 +89,8 @@ class _DailyProductionScreenState extends State<DailyProductionScreen> {
             isScrollable: true,
             tabs: [
               Tab(icon: Icon(Icons.assessment), text: 'Resumen Diario'),
-              Tab(
-                icon: Icon(Icons.shopping_basket),
-                text: 'Totales por Lote',
-              ),
-              Tab(
-                icon: Icon(Icons.menu_book),
-                text: 'Bitácora Galeras',
-              ),
+              Tab(icon: Icon(Icons.shopping_basket), text: 'Totales por Lote'),
+              Tab(icon: Icon(Icons.menu_book), text: 'Bitácora Galeras'),
             ],
           ),
         ),
@@ -123,12 +121,10 @@ class _DailyProductionScreenState extends State<DailyProductionScreen> {
               heroTag: 'btn2',
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const AddSortingScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const AddSortingScreen()),
               ),
               icon: const Icon(Icons.grading),
-              label: const Text('Paso 2: Clasificar'),
+              label: const Text('Paso 2: Limpieza y Clas.'),
               backgroundColor: Colors.green,
             ),
           ],
@@ -166,7 +162,7 @@ class DailyProductionComparisonTab extends StatelessWidget {
               ElevatedButton(
                 onPressed: () => provider.fetchDailyData(),
                 child: const Text("Reintentar"),
-              )
+              ),
             ],
           ),
         ),
@@ -195,21 +191,31 @@ class DailyProductionComparisonTab extends StatelessWidget {
       onRefresh: () => provider.fetchDailyData(),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: provider.dailyReports.length,
+        itemCount:
+            provider.dailyReports.length + 1, // +1 para el Header de Stock
         itemBuilder: (context, index) {
-          final dayReport = provider.dailyReports[index];
-          final dateStr = DateFormat("EEEE d 'de' MMMM", 'es').format(dayReport.date);
+          if (index == 0) {
+            return const CurrentStockHeader();
+          }
+
+          final dayReport = provider.dailyReports[index - 1];
+          final dateStr = DateFormat(
+            "EEEE d 'de' MMMM",
+            'es',
+          ).format(dayReport.date);
           final fullDateStr = dateStr[0].toUpperCase() + dateStr.substring(1);
 
           final bool isEmpty = dayReport.report.isEmpty;
-          
+
           return Card(
             margin: const EdgeInsets.only(bottom: 24),
             elevation: isEmpty ? 1 : 4,
             color: isEmpty ? Colors.grey.shade50 : Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: isEmpty ? BorderSide(color: Colors.grey.shade300) : BorderSide.none,
+              side: isEmpty
+                  ? BorderSide(color: Colors.grey.shade300)
+                  : BorderSide.none,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,8 +224,12 @@ class DailyProductionComparisonTab extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isEmpty ? Colors.grey.shade400 : Colors.orange.shade700,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    color: isEmpty
+                        ? Colors.grey.shade400
+                        : Colors.orange.shade700,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -236,7 +246,10 @@ class DailyProductionComparisonTab extends StatelessWidget {
                       ),
                       if (!isEmpty)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
@@ -259,11 +272,18 @@ class DailyProductionComparisonTab extends StatelessWidget {
                     child: Center(
                       child: Column(
                         children: [
-                          Icon(Icons.egg_outlined, color: Colors.grey, size: 40),
+                          Icon(
+                            Icons.egg_outlined,
+                            color: Colors.grey,
+                            size: 40,
+                          ),
                           SizedBox(height: 8),
                           Text(
                             "Sin producción registrada :(",
-                            style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -275,7 +295,11 @@ class DailyProductionComparisonTab extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                     child: Row(
                       children: [
-                        const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 18),
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.red,
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           "Huevos Quebrados: ${dayReport.totalDamaged}",
@@ -289,25 +313,32 @@ class DailyProductionComparisonTab extends StatelessWidget {
                   ),
                   const Divider(),
                   // Detalle por Tamaños
-                  ...dayReport.report.map((item) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.egg, color: Colors.orange, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            item.productSize,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                  ...dayReport.report.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.egg, color: Colors.orange, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              item.productSize,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
-                        ),
-                        Text(
-                          item.formatted,
-                          style: const TextStyle(color: Colors.blueGrey),
-                        ),
-                      ],
+                          Text(
+                            item.formatted,
+                            style: const TextStyle(color: Colors.blueGrey),
+                          ),
+                        ],
+                      ),
                     ),
-                  )),
+                  ),
                 ],
                 const SizedBox(height: 16),
               ],
@@ -356,18 +387,23 @@ class RawCollectionsTab extends StatelessWidget {
         itemCount: provider.batchSummaries.length,
         itemBuilder: (context, index) {
           final dayReport = provider.batchSummaries[index];
-          final dateStr = DateFormat("EEEE d 'de' MMMM", 'es').format(dayReport.date);
+          final dateStr = DateFormat(
+            "EEEE d 'de' MMMM",
+            'es',
+          ).format(dayReport.date);
           final fullDateStr = dateStr[0].toUpperCase() + dateStr.substring(1);
 
           final bool isEmpty = dayReport.report.isEmpty;
-          
+
           return Card(
             margin: const EdgeInsets.only(bottom: 24),
             elevation: isEmpty ? 1 : 4,
             color: isEmpty ? Colors.grey.shade50 : Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: isEmpty ? BorderSide(color: Colors.grey.shade300) : BorderSide.none,
+              side: isEmpty
+                  ? BorderSide(color: Colors.grey.shade300)
+                  : BorderSide.none,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -376,8 +412,12 @@ class RawCollectionsTab extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isEmpty ? Colors.grey.shade400 : Colors.teal.shade700,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    color: isEmpty
+                        ? Colors.grey.shade400
+                        : Colors.teal.shade700,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -394,7 +434,10 @@ class RawCollectionsTab extends StatelessWidget {
                       ),
                       if (!isEmpty)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
@@ -417,11 +460,18 @@ class RawCollectionsTab extends StatelessWidget {
                     child: Center(
                       child: Column(
                         children: [
-                          Icon(Icons.house_siding_rounded, color: Colors.grey, size: 40),
+                          Icon(
+                            Icons.house_siding_rounded,
+                            color: Colors.grey,
+                            size: 40,
+                          ),
                           SizedBox(height: 8),
                           Text(
                             "Sin recolecta registrada de galeras :(",
-                            style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -430,25 +480,36 @@ class RawCollectionsTab extends StatelessWidget {
                 else ...[
                   const SizedBox(height: 8),
                   // Detalle por Lote
-                  ...dayReport.report.map((item) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.location_on, color: Colors.teal, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            item.batchName,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                  ...dayReport.report.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on,
+                            color: Colors.teal,
+                            size: 20,
                           ),
-                        ),
-                        Text(
-                          item.formatted,
-                          style: const TextStyle(color: Colors.blueGrey),
-                        ),
-                      ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              item.batchName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            item.formatted,
+                            style: const TextStyle(color: Colors.blueGrey),
+                          ),
+                        ],
+                      ),
                     ),
-                  )),
+                  ),
                 ],
                 const SizedBox(height: 16),
               ],
@@ -499,7 +560,8 @@ class BatchCollectionHistoryTab extends StatelessWidget {
       groupedByDate[dateStr]!.add(collection);
     }
 
-    final sortedDates = groupedByDate.keys.toList()..sort((a, b) => b.compareTo(a));
+    final sortedDates = groupedByDate.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
 
     return RefreshIndicator(
       onRefresh: () => provider.fetchDailyData(),
@@ -510,26 +572,41 @@ class BatchCollectionHistoryTab extends StatelessWidget {
           final dateKey = sortedDates[index];
           final collections = groupedByDate[dateKey]!;
           final dateObj = DateTime.parse(dateKey);
-          final dateTitle = DateFormat("EEEE d 'de' MMMM", 'es').format(dateObj);
-          final fullDateTitle = dateTitle[0].toUpperCase() + dateTitle.substring(1);
+          final dateTitle = DateFormat(
+            "EEEE d 'de' MMMM",
+            'es',
+          ).format(dateObj);
+          final fullDateTitle =
+              dateTitle[0].toUpperCase() + dateTitle.substring(1);
 
           return Card(
             margin: const EdgeInsets.only(bottom: 24),
             elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Cabecera de la Bitácora de Campo (Azul Acero)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.indigo.shade700,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.menu_book, color: Colors.white, size: 20),
+                      const Icon(
+                        Icons.menu_book,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -542,7 +619,10 @@ class BatchCollectionHistoryTab extends StatelessWidget {
                       ),
                       Text(
                         "${collections.length} recolecciones",
-                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -559,23 +639,33 @@ class BatchCollectionHistoryTab extends StatelessWidget {
                     final item = collections[i];
                     final cartons = item.quantity ~/ 30;
                     final leftovers = item.quantity % 30;
-                    final formatted = cartons > 0 
-                      ? "$cartons cartones y $leftovers huevos"
-                      : "$leftovers huevos";
+                    final formatted = cartons > 0
+                        ? "$cartons cartones y $leftovers huevos"
+                        : "$leftovers huevos";
 
                     return ListTile(
                       dense: true,
                       leading: CircleAvatar(
                         backgroundColor: Colors.indigo.shade50,
                         radius: 12,
-                        child: Text("${collections.length - i}", style: const TextStyle(fontSize: 10, color: Colors.indigo)),
+                        child: Text(
+                          "${collections.length - i}",
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.indigo,
+                          ),
+                        ),
                       ),
                       title: Text(
                         "Lote: ${item.batchName}",
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       subtitle: Text("Entró: $formatted"),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
+                      trailing: const Icon(
+                        Icons.arrow_forward_ios,
+                        size: 12,
+                        color: Colors.grey,
+                      ),
                     );
                   },
                 ),
@@ -584,6 +674,99 @@ class BatchCollectionHistoryTab extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class CurrentStockHeader extends StatelessWidget {
+  const CurrentStockHeader({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<ProductionProvider>();
+    final stock = provider.inventoryStatus;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 24),
+      elevation: 4,
+      color: Colors.blueGrey.shade900,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
+              children: [
+                const Icon(Icons.inventory_2, color: Colors.amber, size: 20),
+                const SizedBox(width: 8),
+                const Text(
+                  "STOCK ACTUAL (DISPONIBLE)",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                    fontSize: 12,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  "Total: ${stock.fold(0, (sum, i) => sum + i.totalUnits)} huevos",
+                  style: const TextStyle(
+                    color: Colors.amber,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(color: Colors.white24),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Row(
+              children: stock
+                  .map(
+                    (item) => Container(
+                      margin: const EdgeInsets.only(right: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.name.toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            item.formatted,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ],
       ),
     );
   }

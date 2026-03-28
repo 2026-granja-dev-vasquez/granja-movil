@@ -62,4 +62,38 @@ class BatchService {
       throw Exception('Error al registrar mortalidad');
     }
   }
+
+  Future<Map<String, dynamic>> getBatch(int id) async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('${ApiConstants.baseUrl}/batches/$id'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Error al cargar detalle del lote');
+  }
+
+  Future<Map<String, dynamic>> updateBatch(int id, Map<String, dynamic> data) async {
+    final token = await _getToken();
+    final response = await http.put(
+      Uri.parse('${ApiConstants.baseUrl}/batches/$id'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Error al actualizar lote');
+  }
 }

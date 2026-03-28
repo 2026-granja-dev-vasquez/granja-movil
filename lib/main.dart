@@ -12,6 +12,8 @@ import 'features/products/views/product_config_screen.dart';
 
 import 'features/production/providers/production_provider.dart';
 import 'features/production/views/daily_production_screen.dart';
+import 'features/sales/providers/customer_provider.dart';
+import 'features/sales/views/customers_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +27,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => BatchProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => ProductionProvider()),
+        ChangeNotifierProvider(create: (_) => CustomerProvider()),
       ],
       child: const MainApp(),
     ),
@@ -174,11 +177,33 @@ class DashboardPlaceholder extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 56),
+                  backgroundColor: Colors.indigo,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const CustomersScreen(),
+                  ),
+                ),
+                icon: const Icon(Icons.people_outline),
+                label: const Text(
+                  'Gestión de Clientes',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+            ),
             const SizedBox(height: 32),
             const Text(
-              'Módulo 1, 2, 3 & 4 operativos.',
+              'Módulo 1, 2, 3, 4 & 5 operativos.',
               style: TextStyle(
-                color: Colors.green,
+                color: Colors.indigo,
                 fontWeight: FontWeight.bold,
               ),
             ),

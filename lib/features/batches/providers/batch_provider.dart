@@ -9,6 +9,7 @@ class BatchProvider with ChangeNotifier {
   String? _errorMessage;
 
   List<BatchModel> get batches => _batches;
+  List<BatchModel> get activeBatches => _batches.where((b) => b.status == 'active').toList();
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -60,6 +61,33 @@ class BatchProvider with ChangeNotifier {
         date.toIso8601String().split('T')[0],
         reason,
       );
+      await fetchBatches();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<BatchModel?> getBatchDetailed(int id) async {
+    try {
+      final data = await _batchService.getBatch(id);
+      return BatchModel.fromJson(data);
+    } catch (e) {
+      _errorMessage = e.toString();
+      return null;
+    }
+  }
+
+  Future<bool> closeBatch(int id) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _batchService.updateBatch(id, {'status': 'depleted'});
       await fetchBatches();
       return true;
     } catch (e) {

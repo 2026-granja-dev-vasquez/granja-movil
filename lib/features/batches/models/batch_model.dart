@@ -5,6 +5,7 @@ class BatchModel {
   final int currentQuantity;
   final DateTime acquisitionDate;
   final String status;
+  final List<MortalityModel> mortalities;
 
   BatchModel({
     required this.id,
@@ -13,6 +14,7 @@ class BatchModel {
     required this.currentQuantity,
     required this.acquisitionDate,
     required this.status,
+    this.mortalities = const [],
   });
 
   factory BatchModel.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,11 @@ class BatchModel {
       currentQuantity: json['current_quantity'],
       acquisitionDate: DateTime.parse(json['acquisition_date']),
       status: json['status'],
+      mortalities: json['mortalities'] != null
+          ? (json['mortalities'] as List)
+              .map((m) => MortalityModel.fromJson(m))
+              .toList()
+          : [],
     );
   }
 
