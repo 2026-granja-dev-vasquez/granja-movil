@@ -28,6 +28,8 @@ import 'features/users/views/profile_screen.dart';
 import 'core/services/notification_service.dart';
 import 'features/reminders/providers/reminder_provider.dart';
 import 'features/reminders/views/reminder_list_screen.dart';
+import 'features/orders/providers/order_provider.dart';
+import 'features/orders/views/orders_pending_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,6 +52,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => CashProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ReminderProvider()),
+        ChangeNotifierProvider(create: (_) => OrderProvider()),
       ],
       child: const MainApp(),
     ),
@@ -375,6 +378,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       MaterialPageRoute(builder: (_) => const CashBoxScreen()),
                     ),
                   ),
+                _QuickActionCard(
+                  title: 'Pedidos\nProgramados',
+                  icon: Icons.local_shipping_outlined,
+                  color: Colors.indigoAccent,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const OrdersPendingScreen()),
+                  ),
+                ),
               ],
             ),
 
@@ -538,6 +550,29 @@ class AppDrawer extends StatelessWidget {
                       MaterialPageRoute(builder: (_) => const CashBoxScreen()),
                     ),
                   ),
+                
+                const Divider(),
+
+                // PEDIDOS
+                const Padding(
+                  padding: EdgeInsets.only(left: 16, top: 8, bottom: 4),
+                  child: Text(
+                    "LOGÍSTICA Y PEDIDOS",
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
+                _DrawerItem(
+                  icon: Icons.local_shipping_outlined,
+                  label: 'Gestión de Pedidos',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const OrdersPendingScreen()),
+                  ),
+                ),
 
                 const Divider(),
 

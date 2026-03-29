@@ -21,5 +21,10 @@ class ApiConstants {
   static String get me => '$baseUrl/auth/me';
   static String get forgotPassword => '$baseUrl/auth/forgot-password';
   static String get resetPassword => '$baseUrl/auth/reset-password';
+
+  // Módulo de Pedidos
+  static String get orders => '$baseUrl/orders';
+  static String get ordersHistory => '$baseUrl/orders/history';
+  static String ordersStatus(int id) => '$baseUrl/orders/$id/status';
 }
 
