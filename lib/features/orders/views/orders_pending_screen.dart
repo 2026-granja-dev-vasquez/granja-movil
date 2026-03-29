@@ -250,11 +250,88 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
             );
           }
 
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+          final tomorrow = today.add(const Duration(days: 1));
+
+          // Grouping logic
+          final ordersByDate = <DateTime, List<OrderModel>>{};
+          for (var order in provider.pendingOrders) {
+            final date = DateTime(order.deliveryDate.year, order.deliveryDate.month, order.deliveryDate.day);
+            ordersByDate.putIfAbsent(date, () => []).add(order);
+          }
+
+          // Ensure Today and Tomorrow are represented if requested or if relative
+          final sortedDates = ordersByDate.keys.toList()..sort();
+          
+          bool hasToday = ordersByDate.containsKey(today);
+          if (!hasToday && provider.pendingOrders.isNotEmpty) {
+            // We only show "Today: No orders" if there are *some* pending orders in the future
+            // or if we want to be explicit. Let's be explicit as requested.
+            sortedDates.insert(0, today);
+          }
+
+          // Flatten for ListView
+          final listItems = <dynamic>[];
+          for (var date in sortedDates) {
+            listItems.add(date); // Header
+            final orders = ordersByDate[date] ?? [];
+            if (orders.isEmpty && date == today) {
+              listItems.add("No hay entregas para hoy");
+            } else {
+              listItems.addAll(orders);
+            }
+          }
+
           return ListView.builder(
             padding: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 100),
-            itemCount: provider.pendingOrders.length,
+            itemCount: listItems.length,
             itemBuilder: (context, index) {
-              final order = provider.pendingOrders[index];
+              final item = listItems[index];
+
+              if (item is DateTime) {
+                String title;
+                if (item == today) {
+                  title = "HOY";
+                } else if (item == tomorrow) {
+                  title = "MAÑANA";
+                } else {
+                  title = DateFormat('EEEE dd/MM', 'es').format(item).toUpperCase();
+                }
+                
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 14, 
+                          fontWeight: FontWeight.w900, 
+                          color: Colors.grey.shade700,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(child: Divider(color: Colors.grey.shade300)),
+                    ],
+                  ),
+                );
+              }
+
+              if (item is String) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Center(
+                    child: Text(
+                      item,
+                      style: const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+                    ),
+                  ),
+                );
+              }
+
+              final order = item as OrderModel;
               final isOverdue = order.isOverdue;
 
               return Card(
@@ -298,7 +375,7 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
                           Icon(Icons.access_time_filled, size: 16, color: isOverdue ? Colors.red : Colors.grey.shade600),
                           const SizedBox(width: 6),
                           Text(
-                            order.formattedDeliveryDate,
+                            DateFormat('hh:mm a').format(order.deliveryDate),
                             style: TextStyle(fontSize: 14, color: isOverdue ? Colors.red : Colors.black87, fontWeight: FontWeight.w600),
                           ),
                         ],
