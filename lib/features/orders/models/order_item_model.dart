@@ -38,11 +38,11 @@ class OrderItemModel {
     final cartons = quantity ~/ 30;
     final leftover = quantity % 30;
     if (cartons > 0 && leftover > 0) {
-      return '$cartons ct y $leftover u';
+      return '$cartons cartones y $leftover unidades';
     } else if (cartons > 0) {
-      return '$cartons ct';
+      return '$cartons ${cartons == 1 ? 'cartón' : 'cartones'}';
     } else {
-      return '$quantity u';
+      return '$quantity ${quantity == 1 ? 'unidad' : 'unidades'}';
     }
   }
 }

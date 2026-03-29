@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:intl/intl.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/notification_service.dart';
@@ -205,10 +204,15 @@ class OrderProvider with ChangeNotifier {
   Future<void> _scheduleOrderNotification(OrderModel order) async {
     // Passing the actual delivery date; the service will handle the 1-hour-before logic
     try {
+      String itemSummary = order.items.map((i) => '${i.formattedQuantity} ${i.productSize?.name ?? ''}').join(', ');
+      if (order.notes != null && order.notes!.isNotEmpty) {
+        itemSummary += '\nNota: ${order.notes}';
+      }
+
       await _notificationService.scheduleReminder(
-        id: order.id + 100000, // Offset added specifically to avoid ID clashes with original reminders module
+        id: order.id + 100000, 
         title: 'Pedido de: ${order.customer?.name ?? 'Cliente'}',
-        body: 'Entrega programada para las ${DateFormat('hh:mm a').format(order.deliveryDate)}',
+        body: 'Entregar: $itemSummary',
         scheduledDate: order.deliveryDate,
       );
     } catch (e) {

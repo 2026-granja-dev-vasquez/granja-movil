@@ -393,7 +393,7 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                "CARGAR PARA ENTREGA:",
+                                "Detalle de entrega:",
                                 style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.indigo),
                               ),
                               const SizedBox(height: 4),
