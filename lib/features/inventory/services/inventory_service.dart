@@ -26,4 +26,29 @@ class InventoryService {
     }
     throw Exception('Error al cargar inventario');
   }
+
+  Future<void> adjustStock(int productSizeId, String type, int quantity, String? reason) async {
+    final token = await _getToken();
+    final url = Uri.parse('${ApiConstants.baseUrl}/inventory/adjust');
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'product_size_id': productSizeId,
+        'type': type,
+        'quantity': quantity,
+        'reason': reason,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body);
+      throw Exception(error['message'] ?? 'Error al ajustar inventario');
+    }
+  }
 }

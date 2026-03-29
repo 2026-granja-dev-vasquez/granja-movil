@@ -27,4 +27,23 @@ class InventoryProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<bool> adjustStock(int productSizeId, String type, int quantity, String? reason) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _service.adjustStock(productSizeId, type, quantity, reason);
+      await fetchInventory(); // Refresh to get latest totals
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }
