@@ -24,7 +24,7 @@ class ProductService {
     throw Exception('Error al cargar tamaños de producto');
   }
 
-  Future<Map<String, dynamic>> updatePrice(int id, double unit, double carton, double box) async {
+  Future<Map<String, dynamic>> updateSize(int id, String name, double unit, double carton, double box) async {
     final token = await _getToken();
     final response = await http.put(
       Uri.parse('${ApiConstants.baseUrl}/product-sizes/$id'),
@@ -34,6 +34,7 @@ class ProductService {
         'Accept': 'application/json',
       },
       body: jsonEncode({
+        'name': name,
         'unit_price': unit,
         'carton_price': carton,
         'box_price': box,
@@ -43,7 +44,22 @@ class ProductService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     }
-    throw Exception('Error al actualizar precios');
+    throw Exception('Error al actualizar tamaño/precios');
+  }
+
+  Future<void> deleteSize(int id) async {
+    final token = await _getToken();
+    final response = await http.delete(
+      Uri.parse('${ApiConstants.baseUrl}/product-sizes/$id'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Error al eliminar tamaño');
+    }
   }
 
   Future<Map<String, dynamic>> createSize(String name, double unit, double carton, double box) async {

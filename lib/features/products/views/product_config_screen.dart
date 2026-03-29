@@ -49,10 +49,19 @@ class _ProductConfigScreenState extends State<ProductConfigScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(item.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blueGrey),
-                            onPressed: () => _editPrices(context, item),
+                          Expanded(child: Text(item.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit, color: Colors.blueGrey),
+                                onPressed: () => _editPrices(context, item),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                onPressed: () => _confirmDelete(context, item),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -90,19 +99,24 @@ class _ProductConfigScreenState extends State<ProductConfigScreen> {
   }
 
   void _editPrices(BuildContext context, ProductSizeModel item) {
+    final nameCol = TextEditingController(text: item.name);
     final unitCol = TextEditingController(text: item.unitPrice.toString());
     final cartonCol = TextEditingController(text: item.cartonPrice.toString());
     final boxCol = TextEditingController(text: item.boxPrice.toString());
+    bool _isSaving = false;
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text('Editar Precios - ${item.name}'),
+          title: Text('Editar Tamaño - ${item.name}'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                TextField(controller: nameCol, decoration: const InputDecoration(labelText: 'Nombre del Tamaño')),
+                const SizedBox(height: 16),
                 _priceField('Precio por Unidad', unitCol, (_) {}),
                 _priceField('Precio por Cartón (30 uds)', cartonCol, (_) {}),
                 _priceField('Precio por Caja (12 cartones)', boxCol, (_) {}),
@@ -124,25 +138,38 @@ class _ProductConfigScreenState extends State<ProductConfigScreen> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+            TextButton(
+              onPressed: _isSaving ? null : () => Navigator.pop(ctx), 
+              child: const Text('Cancelar')
+            ),
             ElevatedButton(
-              onPressed: () async {
+              onPressed: _isSaving ? null : () async {
                 final u = double.tryParse(unitCol.text.replaceAll(',', '.')) ?? 0;
                 final c = double.tryParse(cartonCol.text.replaceAll(',', '.')) ?? 0;
                 final b = double.tryParse(boxCol.text.replaceAll(',', '.')) ?? 0;
                 
-                final success = await context.read<ProductProvider>().updatePrices(item.id, u, c, b);
-                if (mounted) {
-                  if (success) {
-                    Navigator.pop(context);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: ${context.read<ProductProvider>().errorMessage}')),
-                    );
+                if (nameCol.text.trim().isNotEmpty) {
+                  setState(() => _isSaving = true);
+                  final success = await ctx.read<ProductProvider>().updateSize(item.id, nameCol.text.trim(), u, c, b);
+                  if (ctx.mounted) {
+                    if (success) {
+                      Navigator.pop(ctx);
+                    } else {
+                      setState(() => _isSaving = false);
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        SnackBar(content: Text('Error: ${ctx.read<ProductProvider>().errorMessage}')),
+                      );
+                    }
                   }
+                } else {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(content: Text('Por favor, ingresa un nombre para el tamaño.')),
+                  );
                 }
               },
-              child: const Text('Actualizar'),
+              child: _isSaving 
+                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
+                  : const Text('Actualizar'),
             ),
           ],
         ),
@@ -155,9 +182,11 @@ class _ProductConfigScreenState extends State<ProductConfigScreen> {
     final unitCol = TextEditingController();
     final cartonCol = TextEditingController();
     final boxCol = TextEditingController();
+    bool _isSaving = false;
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: const Text('Añadir Tamaño de Huevo'),
@@ -187,27 +216,38 @@ class _ProductConfigScreenState extends State<ProductConfigScreen> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+            TextButton(
+              onPressed: _isSaving ? null : () => Navigator.pop(context), 
+              child: const Text('Cancelar')
+            ),
             ElevatedButton(
-              onPressed: () async {
+              onPressed: _isSaving ? null : () async {
                 final u = double.tryParse(unitCol.text.replaceAll(',', '.')) ?? 0;
                 final c = double.tryParse(cartonCol.text.replaceAll(',', '.')) ?? 0;
                 final b = double.tryParse(boxCol.text.replaceAll(',', '.')) ?? 0;
                 
-                if (nameCol.text.isNotEmpty) {
-                  final success = await context.read<ProductProvider>().addSize(nameCol.text, u, c, b);
-                  if (mounted) {
+                if (nameCol.text.trim().isNotEmpty) {
+                  setState(() => _isSaving = true);
+                  final success = await ctx.read<ProductProvider>().addSize(nameCol.text.trim(), u, c, b);
+                  if (ctx.mounted) {
                     if (success) {
-                      Navigator.pop(context);
+                      Navigator.pop(ctx);
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error: ${context.read<ProductProvider>().errorMessage}')),
+                      setState(() => _isSaving = false);
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        SnackBar(content: Text('Error: ${ctx.read<ProductProvider>().errorMessage}')),
                       );
                     }
                   }
+                } else {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(content: Text('Por favor, ingresa el nombre del tamaño.')),
+                  );
                 }
               },
-              child: const Text('Guardar'),
+              child: _isSaving 
+                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
+                  : const Text('Guardar'),
             ),
           ],
         ),

@@ -28,12 +28,29 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> updatePrices(int id, double unit, double carton, double box) async {
+  Future<bool> updateSize(int id, String name, double unit, double carton, double box) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      await _productService.updatePrice(id, unit, carton, box);
+      await _productService.updateSize(id, name, unit, carton, box);
+      await fetchSizes();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> deleteSize(int id) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _productService.deleteSize(id);
       await fetchSizes();
       return true;
     } catch (e) {
