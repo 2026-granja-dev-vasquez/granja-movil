@@ -16,6 +16,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -36,8 +37,10 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   }
 
   Future<void> _submit() async {
+    if (_isSaving) return;
     if (!_formKey.currentState!.validate()) return;
 
+    setState(() => _isSaving = true);
     final provider = context.read<CustomerProvider>();
     final customer = CustomerModel(
       id: widget.customer?.id,
@@ -60,6 +63,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       }
     } catch (e) {
       if (mounted) {
+        setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
@@ -117,14 +121,14 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
               ),
               const SizedBox(height: 32),
               ElevatedButton(
-                onPressed: context.watch<CustomerProvider>().isLoading ? null : _submit,
+                onPressed: _isSaving ? null : _submit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.indigo,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: context.watch<CustomerProvider>().isLoading
+                child: _isSaving
                     ? const CircularProgressIndicator(color: Colors.white)
                     : Text(isEditing ? 'Actualizar Cliente' : 'Guardar Cliente', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),

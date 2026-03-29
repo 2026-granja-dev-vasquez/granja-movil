@@ -14,10 +14,10 @@ class _BatchFormScreenState extends State<BatchFormScreen> {
   final _nameController = TextEditingController();
   final _quantityController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
+  bool _isSaving = false;
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<BatchProvider>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Nuevo Lote')),
@@ -70,8 +70,8 @@ class _BatchFormScreenState extends State<BatchFormScreen> {
                   backgroundColor: Colors.orange,
                   foregroundColor: Colors.white,
                 ),
-                onPressed: provider.isLoading ? null : _submit,
-                child: provider.isLoading 
+                onPressed: _isSaving ? null : _submit,
+                child: _isSaving 
                   ? const CircularProgressIndicator(color: Colors.white)
                   : const Text('Guardar Lote'),
               ),
@@ -83,7 +83,10 @@ class _BatchFormScreenState extends State<BatchFormScreen> {
   }
 
   void _submit() async {
+    if (_isSaving) return;
     if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSaving = true);
 
     final success = await context.read<BatchProvider>().addBatch(
       _nameController.text,
@@ -91,8 +94,12 @@ class _BatchFormScreenState extends State<BatchFormScreen> {
       _selectedDate,
     );
 
-    if (success && mounted) {
-      Navigator.pop(context);
+    if (mounted) {
+      if (success) {
+        Navigator.pop(context);
+      } else {
+        setState(() => _isSaving = false);
+      }
     }
   }
 }

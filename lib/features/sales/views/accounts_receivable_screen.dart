@@ -127,29 +127,53 @@ class _AccountsReceivableScreenState extends State<AccountsReceivableScreen> {
   }
 
   Future<void> _markAsPaid(SaleModel sale) async {
+    bool _isSaving = false;
+    
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text("Confirmar Cobro"),
-        content: Text("¿Deseas marcar la venta de Q${sale.totalAmount.toStringAsFixed(2)} como totalmente PAGADA?"),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text("Cancelar")),
-          TextButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text("Sí, Cobrar")),
-        ],
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text("Confirmar Cobro"),
+          content: Text("¿Deseas marcar la venta de Q${sale.totalAmount.toStringAsFixed(2)} como totalmente PAGADA?"),
+          actions: [
+            TextButton(
+              onPressed: _isSaving ? null : () => Navigator.pop(dialogContext, false), 
+              child: const Text("Cancelar")
+            ),
+            TextButton(
+              onPressed: _isSaving ? null : () async {
+                setState(() => _isSaving = true);
+                
+                final success = await context.read<SaleProvider>().updateSaleStatus(sale.id!, {
+                  'status': 'paid',
+                  'paid_amount': sale.totalAmount,
+                });
+
+                if (context.mounted) {
+                  if (success) {
+                    Navigator.pop(dialogContext, true);
+                  } else {
+                    setState(() => _isSaving = false);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: ${context.read<SaleProvider>().errorMessage}'), backgroundColor: Colors.red),
+                    );
+                  }
+                }
+              }, 
+              child: _isSaving
+                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text("Sí, Cobrar")
+            ),
+          ],
+        ),
       ),
     );
 
     if (confirmed == true && mounted) {
-      final success = await context.read<SaleProvider>().updateSaleStatus(sale.id!, {
-        'status': 'paid',
-        'paid_amount': sale.totalAmount,
-      });
-
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("¡Venta cobrada con éxito! 🎉"), backgroundColor: Colors.green),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("¡Venta cobrada con éxito! 🎉"), backgroundColor: Colors.green),
+      );
     }
   }
 }

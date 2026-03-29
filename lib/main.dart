@@ -33,7 +33,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await initializeDateFormatting('es_GT', null);
-  
+
   // Initialize local notifications and timezone
   await NotificationService().init();
 
@@ -120,7 +120,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context.read<ReminderProvider>().syncReminders();
     });
 
-    _notifSub = NotificationService().selectNotificationStream.stream.listen((payload) {
+    _notifSub = NotificationService().selectNotificationStream.stream.listen((
+      payload,
+    ) {
       if (payload != null && mounted) {
         _showPendingReminderDialog(payload);
       }
@@ -139,7 +141,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (rId == null) return;
 
     final provider = context.read<ReminderProvider>();
-    final reminder = provider.activeReminders.where((r) => r.id == rId).firstOrNull;
+    final reminder = provider.activeReminders
+        .where((r) => r.id == rId)
+        .firstOrNull;
 
     if (reminder == null) return;
 
@@ -149,37 +153,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: navigatorKey.currentContext ?? context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Colors.orange, width: 3)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Colors.orange, width: 3),
+        ),
         title: const Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 36),
             SizedBox(width: 8),
-            Expanded(child: Text("¡ATENCIÓN GRANJA!", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18))),
+            Expanded(
+              child: Text(
+                "¡ATENCIÓN GRANJA!",
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+              ),
+            ),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Tienes una tarea programada para este momento:", style: TextStyle(color: Colors.grey, fontSize: 13)),
+            const Text(
+              "Tienes una tarea programada para este momento:",
+              style: TextStyle(color: Colors.grey, fontSize: 13),
+            ),
             const SizedBox(height: 12),
-            Text(reminder.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.indigo)),
-            if (reminder.description != null && reminder.description!.isNotEmpty) ...[
+            Text(
+              reminder.title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Colors.indigo,
+              ),
+            ),
+            if (reminder.description != null &&
+                reminder.description!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(reminder.description!, style: const TextStyle(fontSize: 14)),
             ],
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: Colors.yellow.shade100, borderRadius: BorderRadius.circular(8)),
-              child: const Text("⚠️ Este recordatorio ha sido notificado a todo el equipo.", style: TextStyle(fontSize: 12, color: Colors.black87)),
+              decoration: BoxDecoration(
+                color: Colors.yellow.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                "⚠️ Este recordatorio ha sido notificado a todo el equipo.",
+                style: TextStyle(fontSize: 12, color: Colors.black87),
+              ),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("CERRAR AVISO", style: TextStyle(color: Colors.grey)),
+            child: const Text(
+              "CERRAR AVISO",
+              style: TextStyle(color: Colors.grey),
+            ),
           ),
           if (isAdmin)
             ElevatedButton(
@@ -187,18 +219,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Navigator.pop(ctx);
                 try {
                   final msg = await provider.markAsDone(reminder);
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.green));
+                  if (mounted)
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(msg),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
                 } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
+                  if (mounted)
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(e.toString()),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
                 }
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
               child: const Text("MARCAR COMO HECHO"),
             )
           else
             const Padding(
               padding: EdgeInsets.only(right: 8.0),
-              child: Text("Solo Administradores pueden completar.", style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic)),
+              child: Text(
+                "Solo Administradores pueden completar.",
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
             ),
         ],
       ),
@@ -390,96 +444,156 @@ class AppDrawer extends StatelessWidget {
                     child: Icon(Icons.person, color: Colors.indigo, size: 40),
                   ),
                 ),
-                
+
                 // MI CUENTA
                 _DrawerItem(
                   icon: Icons.account_circle_outlined,
                   label: 'Mi Perfil',
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                  ),
                 ),
-                
+
                 // RECORDATORIOS COMPARTIDOS
                 _DrawerItem(
                   icon: Icons.notifications_active_outlined,
                   label: 'Recordatorios de Granja',
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReminderListScreen())),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ReminderListScreen(),
+                    ),
+                  ),
                 ),
-                
+
                 const Divider(),
 
                 // OPERACIONES DIARIAS
                 const Padding(
                   padding: EdgeInsets.only(left: 16, top: 8, bottom: 4),
-                  child: Text("OPERACIONES DIARIAS", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  child: Text(
+                    "OPERACIONES DIARIAS",
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
                 ),
                 _DrawerItem(
                   icon: Icons.egg_outlined,
                   label: 'Producción Diaria',
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyProductionScreen())),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const DailyProductionScreen(),
+                    ),
+                  ),
                 ),
                 _DrawerItem(
                   icon: Icons.shopping_cart_outlined,
                   label: 'Nueva Venta',
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddSaleScreen())),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AddSaleScreen()),
+                  ),
                 ),
                 _DrawerItem(
                   icon: Icons.history_edu_outlined,
                   label: 'Historial de Ventas',
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SaleListScreen())),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SaleListScreen()),
+                  ),
                 ),
                 _DrawerItem(
                   icon: Icons.payments_outlined,
                   label: 'Cobros (Cuentas x C.)',
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountsReceivableScreen())),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AccountsReceivableScreen(),
+                    ),
+                  ),
                 ),
                 _DrawerItem(
                   icon: Icons.inventory_2_outlined,
                   label: 'Stock en Existencia',
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductStockScreen())),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ProductStockScreen(),
+                    ),
+                  ),
                 ),
-                
+
                 // CAJA: Solo Admins
                 if (isAdmin)
                   _DrawerItem(
                     icon: Icons.account_balance_wallet_outlined,
                     label: 'Caja',
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CashBoxScreen())),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const CashBoxScreen()),
+                    ),
                   ),
-                
+
                 const Divider(),
-                
+
                 // ADMINISTRACIÓN
                 const Padding(
                   padding: EdgeInsets.only(left: 16, top: 8, bottom: 4),
-                  child: Text("ADMINISTRACIÓN", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  child: Text(
+                    "ADMINISTRACIÓN",
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
                 ),
                 _DrawerItem(
                   icon: Icons.pets_outlined,
                   label: 'Gestión de Lotes',
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BatchListScreen())),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const BatchListScreen()),
+                  ),
                 ),
                 _DrawerItem(
                   icon: Icons.settings_outlined,
-                  label: 'Configuración de Precios',
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductConfigScreen())),
+                  label: 'Tamaños de Huevos y Precios',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ProductConfigScreen(),
+                    ),
+                  ),
                 ),
                 _DrawerItem(
                   icon: Icons.people_outline,
                   label: 'Gestión de Clientes',
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomersScreen())),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CustomersScreen()),
+                  ),
                 ),
-                
+
                 // GESTIÓN DE USUARIOS: Solo Admins
                 if (isAdmin)
                   _DrawerItem(
                     icon: Icons.people_alt_outlined,
                     label: 'Gestión de Usuarios',
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserListScreen())),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const UserListScreen()),
+                    ),
                   ),
               ],
             ),
           ),
-          
+
           const Divider(),
           _DrawerItem(
             icon: Icons.logout,

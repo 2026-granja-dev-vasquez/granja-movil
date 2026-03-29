@@ -14,10 +14,10 @@ class _MortalityDialogState extends State<MortalityDialog> {
   final _quantityController = TextEditingController();
   final _reasonController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
+  bool _isSaving = false;
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<BatchProvider>();
 
     return AlertDialog(
       title: const Text('Registrar Baja/Mortalidad'),
@@ -57,12 +57,12 @@ class _MortalityDialogState extends State<MortalityDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
           child: const Text('Cancelar'),
         ),
         ElevatedButton(
-          onPressed: provider.isLoading ? null : _submit,
-          child: provider.isLoading 
+          onPressed: _isSaving ? null : _submit,
+          child: _isSaving 
             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
             : const Text('Registrar'),
         ),
@@ -71,9 +71,13 @@ class _MortalityDialogState extends State<MortalityDialog> {
   }
 
   void _submit() async {
+    if (_isSaving) return;
+    
     final qty = int.tryParse(_quantityController.text);
     if (qty == null || qty <= 0) return;
 
+    setState(() => _isSaving = true);
+    
     final success = await context.read<BatchProvider>().registerMortality(
       widget.batchId,
       qty,
@@ -81,8 +85,12 @@ class _MortalityDialogState extends State<MortalityDialog> {
       _reasonController.text.isEmpty ? null : _reasonController.text,
     );
 
-    if (success && mounted) {
-      Navigator.pop(context);
+    if (mounted) {
+      if (success) {
+        Navigator.pop(context);
+      } else {
+        setState(() => _isSaving = false);
+      }
     }
   }
 }

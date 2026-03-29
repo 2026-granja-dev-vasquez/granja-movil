@@ -23,6 +23,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> _handleSubmit() async {
+    if (_isLoading) return;
+    
     setState(() {
       _isLoading = true;
       _message = null;

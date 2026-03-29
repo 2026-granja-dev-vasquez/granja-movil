@@ -58,6 +58,7 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
   }
 
   void _submit() async {
+    if (_isLoading) return;
     if (!_formKey.currentState!.validate()) return;
     if (_selectedDate == null || _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Debes seleccionar fecha y hora inicial.')));

@@ -16,6 +16,7 @@ class _CashBoxScreenState extends State<CashBoxScreen> {
   final _nameController = TextEditingController();
   final _searchController = TextEditingController();
   String _searchQuery = "";
+  bool _isSavingBox = false;
 
   @override
   void initState() {
@@ -164,7 +165,7 @@ class _CashBoxScreenState extends State<CashBoxScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _handleOpenBox,
+                  onPressed: _isSavingBox ? null : _handleOpenBox,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.indigo,
                     foregroundColor: Colors.white,
@@ -172,7 +173,9 @@ class _CashBoxScreenState extends State<CashBoxScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: const Text("ABRIR CAJA MENSUAL"),
+                  child: _isSavingBox 
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text("ABRIR CAJA MENSUAL"),
                 ),
               ),
             ],
@@ -183,6 +186,8 @@ class _CashBoxScreenState extends State<CashBoxScreen> {
   }
 
   void _handleOpenBox() async {
+    if (_isSavingBox) return;
+    
     final name = _nameController.text.trim();
     final amount = double.tryParse(_amountController.text) ?? 0.0;
 
@@ -193,13 +198,19 @@ class _CashBoxScreenState extends State<CashBoxScreen> {
       return;
     }
 
+    setState(() => _isSavingBox = true);
+
     try {
       await context.read<CashProvider>().openBox(name, amount);
-      _amountController.clear();
+      if (mounted) _amountController.clear();
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _isSavingBox = false);
     }
   }
 
@@ -565,6 +576,7 @@ class _CashBoxScreenState extends State<CashBoxScreen> {
   }
 
   void _showTransactionDialog(String type) {
+    bool _isSavingTx = false;
     final descController = TextEditingController();
     final amountController = TextEditingController();
     DateTime selectedDate = DateTime.now();
@@ -572,6 +584,7 @@ class _CashBoxScreenState extends State<CashBoxScreen> {
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: Text(
@@ -622,13 +635,14 @@ class _CashBoxScreenState extends State<CashBoxScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: _isSavingTx ? null : () => Navigator.pop(context),
               child: const Text("CANCELAR"),
             ),
             ElevatedButton(
-              onPressed: () async {
+              onPressed: _isSavingTx ? null : () async {
                 final amount = double.tryParse(amountController.text) ?? 0.0;
                 if (amount > 0) {
+                  setDialogState(() => _isSavingTx = true);
                   await context.read<CashProvider>().addTransaction(
                     type,
                     amount,
@@ -638,10 +652,14 @@ class _CashBoxScreenState extends State<CashBoxScreen> {
                         : descController.text,
                     selectedDate,
                   );
-                  if (mounted) Navigator.pop(context);
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                  }
                 }
               },
-              child: const Text("REGISTRAR"),
+              child: _isSavingTx 
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Text("REGISTRAR"),
             ),
           ],
         ),
@@ -650,30 +668,37 @@ class _CashBoxScreenState extends State<CashBoxScreen> {
   }
 
   void _showConfirmClose() {
+    bool _isSavingClose = false;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("¿Cerrar Caja?"),
-        content: const Text(
-          "Se guardará el saldo final y no podrás agregar más movimientos hasta abrir una nueva caja.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("CANCELAR"),
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text("¿Cerrar Caja?"),
+          content: const Text(
+            "Se guardará el saldo final y no podrás agregar más movimientos hasta abrir una nueva caja.",
           ),
-          ElevatedButton(
-            onPressed: () async {
-              await context.read<CashProvider>().closeBox();
-              if (mounted) Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+          actions: [
+            TextButton(
+              onPressed: _isSavingClose ? null : () => Navigator.pop(context),
+              child: const Text("CANCELAR"),
             ),
-            child: const Text("CERRAR"),
-          ),
-        ],
+            ElevatedButton(
+              onPressed: _isSavingClose ? null : () async {
+                setState(() => _isSavingClose = true);
+                await context.read<CashProvider>().closeBox();
+                if (context.mounted) Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: _isSavingClose 
+                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text("CERRAR"),
+            ),
+          ],
+        ),
       ),
     );
   }

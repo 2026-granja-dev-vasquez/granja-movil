@@ -138,6 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 text: 'Iniciar Sesión',
                 isLoading: authProvider.isLoading,
                 onPressed: () {
+                  if (authProvider.isLoading) return;
                   authProvider.login(_emailController.text, _passwordController.text, rememberMe: _rememberMe);
                 },
               ),

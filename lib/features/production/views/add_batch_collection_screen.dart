@@ -19,6 +19,7 @@ class _AddBatchCollectionScreenState extends State<AddBatchCollectionScreen> {
   int _cartons = 0;
   int _units = 0;
   DateTime _selectedDate = DateTime.now();
+  bool _isSaving = false;
 
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
@@ -44,7 +45,6 @@ class _AddBatchCollectionScreenState extends State<AddBatchCollectionScreen> {
   @override
   Widget build(BuildContext context) {
     final batchProvider = context.watch<BatchProvider>();
-    final productionProvider = context.watch<ProductionProvider>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Paso 1: Recoger por lotes')),
@@ -147,8 +147,8 @@ class _AddBatchCollectionScreenState extends State<AddBatchCollectionScreen> {
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
                 ),
-                onPressed: productionProvider.isLoading ? null : _submit,
-                child: productionProvider.isLoading
+                onPressed: _isSaving ? null : _submit,
+                child: _isSaving
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text('Guardar lo Traído'),
               ),
@@ -160,6 +160,7 @@ class _AddBatchCollectionScreenState extends State<AddBatchCollectionScreen> {
   }
 
   void _submit() async {
+    if (_isSaving) return;
     if (!_formKey.currentState!.validate()) return;
 
     final totalRaw = (_cartons * 30) + _units;
@@ -169,6 +170,8 @@ class _AddBatchCollectionScreenState extends State<AddBatchCollectionScreen> {
       );
       return;
     }
+
+    setState(() => _isSaving = true);
 
     final model = BatchCollectionModel(
       batchId: _selectedBatchId!,
@@ -180,12 +183,15 @@ class _AddBatchCollectionScreenState extends State<AddBatchCollectionScreen> {
       model,
     );
 
-    if (success && mounted) {
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Recolecta guardada correctamente')),
       );
       Navigator.pop(context);
-    } else if (mounted) {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(

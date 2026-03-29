@@ -22,6 +22,7 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
   final TextEditingController _notesController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   SaleStatus _status = SaleStatus.paid;
+  bool _isSaving = false;
 
   double get _totalAmount => _items.fold(0, (sum, item) => sum + item.subtotal);
 
@@ -328,12 +329,15 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
   }
 
   void _submit() async {
+    if (_isSaving) return;
     if (_items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Agrega al menos un producto')),
       );
       return;
     }
+
+    setState(() => _isSaving = true);
 
     final sale = SaleModel(
       customerId: _selectedCustomerId,
@@ -346,7 +350,10 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
     );
 
     final success = await context.read<SaleProvider>().createSale(sale);
-    if (success && mounted) {
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+    
+    if (success) {
       await showDialog(
         context: context,
         barrierDismissible: false,
@@ -396,7 +403,6 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
   @override
   Widget build(BuildContext context) {
     final customers = context.watch<CustomerProvider>().activeCustomers;
-    final saleProvider = context.watch<SaleProvider>();
     final cashProvider = context.watch<CashProvider>();
     final hasActiveBox = cashProvider.activeBox != null;
 
@@ -671,8 +677,8 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  onPressed: saleProvider.isLoading ? null : _submit,
-                  child: saleProvider.isLoading
+                  onPressed: _isSaving ? null : _submit,
+                  child: _isSaving
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text(
                           'PROCESAR VENTA',

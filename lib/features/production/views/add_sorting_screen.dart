@@ -20,6 +20,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
   int _globalDamaged = 0;
   DateTime _selectedDate = DateTime.now();
   bool _showBrokenEggs = false;
+  bool _isSaving = false;
 
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
@@ -346,8 +347,8 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
                 ),
-                onPressed: productionProvider.isLoading ? null : _submit,
-                child: productionProvider.isLoading
+                onPressed: _isSaving ? null : _submit,
+                child: _isSaving
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text('Guardar Clasificación'),
               ),
@@ -428,46 +429,65 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
     BuildContext context,
     ProductionModel prod,
   ) async {
+    bool _isDeleting = false;
+
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('¿Eliminar registro?'),
-        content: const Text(
-          'Esto restará los huevos de tu stock actual para corregir el inventario.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('¿Eliminar registro?'),
+          content: const Text(
+            'Esto restará los huevos de tu stock actual para corregir el inventario.',
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+          actions: [
+            TextButton(
+              onPressed: _isDeleting ? null : () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
             ),
-            child: const Text('Eliminar'),
-          ),
-        ],
+            ElevatedButton(
+              onPressed: _isDeleting ? null : () async {
+                setState(() => _isDeleting = true);
+                final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+                final success = await context
+                    .read<ProductionProvider>()
+                    .deleteSortedProduction(prod.id!, date: dateStr);
+                if (context.mounted) {
+                  if (success) {
+                    Navigator.pop(context, true);
+                  } else {
+                    setState(() => _isDeleting = false);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: ${context.read<ProductionProvider>().errorMessage}')),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: _isDeleting 
+                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Eliminar'),
+            ),
+          ],
+        ),
       ),
     );
 
     if (confirmed == true && mounted) {
-      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-      final success = await context
-          .read<ProductionProvider>()
-          .deleteSortedProduction(prod.id!, date: dateStr);
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Registro eliminado y stock revertido.'),
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Registro eliminado y stock revertido.'),
+        ),
+      );
     }
   }
 
   void _submit() async {
+    if (_isSaving) return;
+
     final totalUseful = (_cartons * 30) + _units;
 
     if (totalUseful <= 0 && _globalDamaged <= 0) {
@@ -487,6 +507,8 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
       );
       return;
     }
+
+    setState(() => _isSaving = true);
 
     final List<ProductionModel> productionList = [];
 
@@ -517,12 +539,15 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
         .read<ProductionProvider>()
         .addMultipleSortedProductions(productionList, date: dateStr);
 
-    if (success && mounted) {
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Registro guardado correctamente')),
       );
       Navigator.pop(context);
-    } else if (mounted) {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
