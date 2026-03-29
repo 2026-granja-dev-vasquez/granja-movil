@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/views/login_screen.dart';
@@ -121,13 +122,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ReminderProvider>().syncReminders();
+      context.read<OrderProvider>().fetchPendingOrders().then((_) {
+        _checkOverdueOrders();
+      });
     });
 
     _notifSub = NotificationService().selectNotificationStream.stream.listen((
       payload,
     ) {
       if (payload != null && mounted) {
-        _showPendingReminderDialog(payload);
+        final id = int.tryParse(payload) ?? 0;
+        if (id >= 100000) {
+          _showOrderAlarmDialog(id - 100000);
+        } else {
+          _showPendingReminderDialog(payload);
+        }
       }
     });
   }
@@ -222,21 +231,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Navigator.pop(ctx);
                 try {
                   final msg = await provider.markAsDone(reminder);
-                  if (mounted)
+                  if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(msg),
                         backgroundColor: Colors.green,
                       ),
                     );
+                  }
                 } catch (e) {
-                  if (mounted)
+                  if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(e.toString()),
                         backgroundColor: Colors.red,
                       ),
                     );
+                  }
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -257,6 +268,102 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  void _checkOverdueOrders() {
+    if (!mounted) return;
+    final provider = context.read<OrderProvider>();
+    final overdueOrders = provider.pendingOrders.where((o) => o.isOverdue).toList();
+    
+    if (overdueOrders.isNotEmpty) {
+      // Show alert for the first overdue one or a general one
+      _showOrderAlarmDialog(overdueOrders.first.id, isOverdueMode: true);
+    }
+  }
+  
+  void _showOrderAlarmDialog(int orderId, {bool isOverdueMode = false}) async {
+    if (!mounted) return;
+    
+    final provider = context.read<OrderProvider>();
+    // Guarantee loading
+    if (provider.pendingOrders.isEmpty) {
+      await provider.fetchPendingOrders();
+    }
+    
+    final order = provider.pendingOrders.where((o) => o.id == orderId).firstOrNull;
+    if (order == null) return;
+
+    showDialog(
+      context: navigatorKey.currentContext ?? context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: isOverdueMode ? Colors.red : Colors.indigo, width: 3),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              isOverdueMode ? Icons.warning_amber_rounded : Icons.local_shipping, 
+              color: isOverdueMode ? Colors.red : Colors.indigo, 
+              size: 36,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                isOverdueMode ? "¡PEDIDO ATRASADO!" : "¡ALERTA DE ENTREGA!",
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isOverdueMode 
+                ? "Tienes un pedido que no ha sido entregado a tiempo:"
+                : "Un pedido debe ser entregado pronto:",
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              "Cliente: ${order.customer?.name ?? '...'}",
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "Entrega: ${DateFormat('dd/MM/yyyy hh:mm a').format(order.deliveryDate)}",
+              style: TextStyle(
+                color: isOverdueMode ? Colors.red : Colors.indigo, 
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("CERRAR", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const OrdersPendingScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isOverdueMode ? Colors.red : Colors.indigo,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text("GESTIONAR AHORA"),
+          ),
         ],
       ),
     );
@@ -347,14 +454,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 _QuickActionCard(
-                  title: 'Cobros (Cuentas x C.)',
-                  icon: Icons.payments_outlined,
-                  color: Colors.red.shade700,
+                  title: 'Pedidos',
+                  icon: Icons.local_shipping_outlined,
+                  color: Colors.indigoAccent,
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => const AccountsReceivableScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const OrdersPendingScreen()),
                   ),
                 ),
                 _QuickActionCard(
@@ -378,15 +483,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       MaterialPageRoute(builder: (_) => const CashBoxScreen()),
                     ),
                   ),
-                _QuickActionCard(
-                  title: 'Pedidos\nProgramados',
-                  icon: Icons.local_shipping_outlined,
-                  color: Colors.indigoAccent,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const OrdersPendingScreen()),
-                  ),
-                ),
               ],
             ),
 
@@ -448,7 +544,7 @@ class AppDrawer extends StatelessWidget {
                     user?.role.toUpperCase() ?? 'OPERADOR',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                     ),
                   ),
                   currentAccountPicture: const CircleAvatar(
@@ -667,7 +763,7 @@ class _QuickActionCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -679,7 +775,7 @@ class _QuickActionCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 30),

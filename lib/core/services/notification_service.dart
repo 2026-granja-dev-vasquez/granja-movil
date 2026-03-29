@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter/foundation.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -16,7 +17,15 @@ class NotificationService {
 
   Future<void> init() async {
     tz.initializeTimeZones();
-    tz.setLocalLocation(tz.getLocation('America/Guatemala')); // Default timezone for the farm
+    try {
+      final dynamic tzData = await FlutterTimezone.getLocalTimezone();
+      // In flutter_timezone 5.0+, it might be an object with .name
+      final String timeZoneName = tzData is String ? tzData : (tzData.name ?? 'America/Guatemala');
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+    } catch (e) {
+      // Final fallback
+      tz.setLocalLocation(tz.getLocation('America/Guatemala'));
+    }
 
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -85,6 +94,17 @@ class NotificationService {
         scheduledDate: scheduledDate,
         payload: id.toString(),
       );
+    } else {
+      // If it's already past the exact time (unlikely but safe) or very close,
+      // and we want some immediate feedback in-app (like a "Scheduled!" alert)
+      // we can fire a one-time notification in 30 seconds as fallback
+      await _scheduleNotification(
+        id: id * 10 + 1,
+        title: '¡Entrega hoy!: $title',
+        body: 'Programado para ahora: $body',
+        scheduledDate: DateTime.now().add(const Duration(seconds: 30)),
+        payload: id.toString(),
+      );
     }
   }
 
@@ -121,7 +141,6 @@ class NotificationService {
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.dateAndTime,
       payload: payload,
     );
   }

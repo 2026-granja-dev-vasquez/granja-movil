@@ -112,9 +112,13 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
             Consumer<CustomerProvider>(
               builder: (context, provider, _) {
                 if (provider.isLoading && provider.activeCustomers.isEmpty) {
-                  return const LinearProgressIndicator();
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.0),
+                    child: LinearProgressIndicator(),
+                  );
                 }
                 return DropdownButtonFormField<CustomerModel>(
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Cliente',
                     prefixIcon: Icon(Icons.person_outline),
@@ -124,7 +128,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                   items: provider.activeCustomers.map((customer) {
                     return DropdownMenuItem(
                       value: customer,
-                      child: Text(customer.name),
+                      child: Text(customer.name, overflow: TextOverflow.ellipsis),
                     );
                   }).toList(),
                   onChanged: (val) => setState(() => _selectedCustomer = val),
@@ -133,24 +137,17 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
               },
             ),
             
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             
-            // Selector de Fecha
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(
-                side: const BorderSide(color: Colors.grey),
-                borderRadius: BorderRadius.circular(4)
+            // Selector de Fecha (Simulado con TextFormField)
+            TextFormField(
+              readOnly: true,
+              controller: TextEditingController(text: DateFormat('EEEE d, MMMM yyyy', 'es_GT').format(_selectedDate)),
+              decoration: const InputDecoration(
+                labelText: 'Fecha de Entrega',
+                prefixIcon: Icon(Icons.calendar_month, color: Colors.indigo),
+                border: OutlineInputBorder(),
               ),
-              title: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12.0),
-                child: Text('Fecha de Entrega'),
-              ),
-              subtitle: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                child: Text(DateFormat('EEEE d, MMMM yyyy', 'es_GT').format(_selectedDate), style: const TextStyle(fontWeight: FontWeight.bold)),
-              ),
-              trailing: const Padding(padding: EdgeInsets.only(right: 12.0), child: Icon(Icons.calendar_month, color: Colors.indigo)),
               onTap: () async {
                 final picked = await showDatePicker(
                   context: context,
@@ -164,24 +161,17 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
               },
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // Selector de Hora
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(
-                side: const BorderSide(color: Colors.grey),
-                borderRadius: BorderRadius.circular(4)
+            // Selector de Hora (Simulado con TextFormField)
+            TextFormField(
+              readOnly: true,
+              controller: TextEditingController(text: _selectedTime.format(context)),
+              decoration: const InputDecoration(
+                labelText: 'Hora Programada',
+                prefixIcon: Icon(Icons.access_time_filled, color: Colors.orange),
+                border: OutlineInputBorder(),
               ),
-              title: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12.0),
-                child: Text('Hora Programada'),
-              ),
-              subtitle: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                child: Text(_selectedTime.format(context), style: const TextStyle(fontWeight: FontWeight.bold)),
-              ),
-              trailing: const Padding(padding: EdgeInsets.only(right: 12.0), child: Icon(Icons.access_time_filled, color: Colors.orange)),
               onTap: () async {
                 final picked = await showTimePicker(
                   context: context,
@@ -193,7 +183,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
               },
             ),
 
-            const SizedBox(height: 40),
+            const SizedBox(height: 48),
             LoadingButton(
               text: 'PROGRAMAR ALARMA DE PEDIDO',
               isLoading: _isSaving,

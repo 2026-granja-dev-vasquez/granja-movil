@@ -113,7 +113,7 @@ class OrderProvider with ChangeNotifier {
         },
         body: jsonEncode({
           'customer_id': customerId,
-          'delivery_date': deliveryDate.toIso8601String(),
+          'delivery_date': deliveryDate.toUtc().toIso8601String(),
         }),
       );
 
@@ -122,7 +122,7 @@ class OrderProvider with ChangeNotifier {
         _pendingOrders.add(newOrder);
         
         // Arrange Notification 1 hour before
-        _scheduleOrderNotification(newOrder);
+        await _scheduleOrderNotification(newOrder);
         
         // Sort
         _pendingOrders.sort((a, b) => a.deliveryDate.compareTo(b.deliveryDate));
@@ -150,7 +150,9 @@ class OrderProvider with ChangeNotifier {
       final url = Uri.parse(ApiConstants.ordersStatus(orderId));
       
       final Map<String, dynamic> payload = {'status': status};
-      if (newDate != null) payload['delivery_date'] = newDate.toIso8601String();
+      if (newDate != null) {
+        payload['delivery_date'] = newDate.toUtc().toIso8601String();
+      }
       if (notes != null) payload['notes'] = notes;
 
       final response = await http.post(
@@ -179,8 +181,8 @@ class OrderProvider with ChangeNotifier {
              _pendingOrders.sort((a, b) => a.deliveryDate.compareTo(b.deliveryDate));
              
              // Reschedule Notification
-             _cancelOrderNotification(orderId);
-             _scheduleOrderNotification(updatedOrder);
+             await _cancelOrderNotification(orderId);
+             await _scheduleOrderNotification(updatedOrder);
         }
         
         return true;
