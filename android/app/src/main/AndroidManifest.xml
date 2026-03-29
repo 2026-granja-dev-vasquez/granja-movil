@@ -3,10 +3,11 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
-        android:label="granja_avicola"
+        android:label="Granja Las Coloradas"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         
