@@ -380,6 +380,42 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
                           ),
                         ],
                       ),
+                      if (order.items.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.indigo.shade50.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "CARGAR PARA ENTREGA:",
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.indigo),
+                              ),
+                              const SizedBox(height: 4),
+                              Wrap(
+                                spacing: 8,
+                                children: order.items.map((it) => Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: Colors.indigo.shade100),
+                                  ),
+                                  child: Text(
+                                    "${it.formattedQuantity} ${it.productSize?.name ?? ''}",
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.indigo),
+                                  ),
+                                )).toList(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       if (order.notes != null && order.notes!.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Text('Nota: ${order.notes}', style: const TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic)),

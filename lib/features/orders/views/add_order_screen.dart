@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../providers/order_provider.dart';
 import '../../sales/providers/customer_provider.dart';
 import '../../sales/models/customer_model.dart';
+import '../../inventory/providers/inventory_provider.dart';
 import '../../../shared/widgets/loading_button.dart';
 
 class AddOrderScreen extends StatefulWidget {
@@ -18,13 +19,18 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   CustomerModel? _selectedCustomer;
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
+  final TextEditingController _notesController = TextEditingController();
   bool _isSaving = false;
+
+  // Items logic
+  final List<Map<String, dynamic>> _items = []; // {product_size_id, name, qty_units, formatted_qty}
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CustomerProvider>().fetchCustomers();
+      context.read<InventoryProvider>().fetchInventory();
     });
   }
 
@@ -61,9 +67,19 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       return;
     }
 
+    if (_items.isEmpty) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Agrega al menos un producto al pedido')),
+      );
+      return;
+    }
+
     final success = await context.read<OrderProvider>().createOrder(
       _selectedCustomer!.id!,
       finalDateTime,
+      _items,
+      notes: _notesController.text.isEmpty ? null : _notesController.text,
     );
 
     if (mounted) {
@@ -183,6 +199,70 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
               },
             ),
 
+            const SizedBox(height: 32),
+            const Divider(),
+            const SizedBox(height: 16),
+            const Text(
+              'Detalle de Productos',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+            ),
+            const SizedBox(height: 12),
+            
+            // Lista de items ya agregados
+            if (_items.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: const Center(
+                  child: Text('Aún no has agregado productos', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                ),
+              )
+            else
+              ..._items.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final item = entry.value;
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    dense: true,
+                    title: Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text('Cantidad: ${item['formatted_qty']}'),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      onPressed: () => setState(() => _items.removeAt(idx)),
+                    ),
+                  ),
+                );
+              }),
+
+            const SizedBox(height: 16),
+            
+            // Botón para abrir diálogo de agregar item
+            OutlinedButton.icon(
+              onPressed: () => _showAddItemDialog(),
+              icon: const Icon(Icons.add),
+              label: const Text('AGREGAR PRODUCTO AL PEDIDO'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                foregroundColor: Colors.indigo,
+              ),
+            ),
+
+            const SizedBox(height: 24),
+            TextField(
+              controller: _notesController,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Notas Adicionales (Opcional)',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.note_alt_outlined),
+              ),
+            ),
+
             const SizedBox(height: 48),
             LoadingButton(
               text: 'PROGRAMAR ALARMA DE PEDIDO',
@@ -190,6 +270,92 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
               onPressed: _submit,
             ),
           ]
+        ),
+      ),
+    );
+  }
+
+  void _showAddItemDialog() {
+    final invProvider = context.read<InventoryProvider>();
+    if (invProvider.inventory.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay tamaños de huevo cargados en inventario')),
+      );
+      return;
+    }
+
+    dynamic selectedSize = invProvider.inventory.first;
+    final TextEditingController qtyController = TextEditingController();
+    bool inCartons = true;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Agregar a Entrega'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<dynamic>(
+                value: selectedSize,
+                decoration: const InputDecoration(labelText: 'Tamaño'),
+                items: invProvider.inventory.map((size) {
+                  return DropdownMenuItem(value: size, child: Text(size.name));
+                }).toList(),
+                onChanged: (val) => setDialogState(() => selectedSize = val),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: qtyController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: inCartons ? 'Cartones' : 'Huevos',
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    children: [
+                      const Text('Modo', style: TextStyle(fontSize: 10)),
+                      Switch(
+                        value: inCartons,
+                        onChanged: (val) => setDialogState(() => inCartons = val),
+                        activeThumbColor: Colors.indigo,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCELAR')),
+            ElevatedButton(
+              onPressed: () {
+                final qty = int.tryParse(qtyController.text);
+                if (qty == null || qty <= 0) return;
+
+                final totalUnits = inCartons ? qty * 30 : qty;
+                final formatted = inCartons ? '$qty ct' : '$qty u';
+
+                setState(() {
+                  _items.add({
+                    'product_size_id': selectedSize.productSizeId,
+                    'name': selectedSize.name,
+                    'quantity': totalUnits,
+                    'formatted_qty': formatted,
+                  });
+                });
+                Navigator.pop(ctx);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+              child: const Text('AGREGAR'),
+            ),
+          ],
         ),
       ),
     );

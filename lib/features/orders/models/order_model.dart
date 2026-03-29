@@ -1,5 +1,6 @@
 import '../../sales/models/customer_model.dart';
 import 'package:intl/intl.dart';
+import 'order_item_model.dart';
 
 class OrderModel {
   final int id;
@@ -10,6 +11,8 @@ class OrderModel {
   final DateTime createdAt;
   final CustomerModel? customer;
 
+  final List<OrderItemModel> items;
+
   OrderModel({
     required this.id,
     required this.customerId,
@@ -18,9 +21,17 @@ class OrderModel {
     this.notes,
     required this.createdAt,
     this.customer,
+    this.items = const [],
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
+    var itemsList = <OrderItemModel>[];
+    if (json['items'] != null) {
+      itemsList = (json['items'] as List)
+          .map((i) => OrderItemModel.fromJson(i))
+          .toList();
+    }
+
     return OrderModel(
       id: json['id'],
       customerId: json['customer_id'],
@@ -29,6 +40,7 @@ class OrderModel {
       notes: json['notes'],
       createdAt: DateTime.parse(json['created_at']).toLocal(),
       customer: json['customer'] != null ? CustomerModel.fromJson(json['customer']) : null,
+      items: itemsList,
     );
   }
 
