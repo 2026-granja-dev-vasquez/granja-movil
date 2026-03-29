@@ -270,4 +270,53 @@ class _ProductConfigScreenState extends State<ProductConfigScreen> {
       ),
     );
   }
+
+  void _confirmDelete(BuildContext context, ProductSizeModel item) {
+    bool _isDeleting = false;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Eliminar Tamaño'),
+            ],
+          ),
+          content: Text('¿Estás seguro de que deseas eliminar permanentemente el tamaño "${item.name}"? Esta acción no se puede deshacer.'),
+          actions: [
+            TextButton(
+              onPressed: _isDeleting ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              onPressed: _isDeleting ? null : () async {
+                setState(() => _isDeleting = true);
+                final success = await ctx.read<ProductProvider>().deleteSize(item.id);
+                if (ctx.mounted) {
+                  if (success) {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(content: Text('Tamaño eliminado correctamente.'), backgroundColor: Colors.green),
+                    );
+                  } else {
+                    setState(() => _isDeleting = false);
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(content: Text('Error: ${ctx.read<ProductProvider>().errorMessage}'), backgroundColor: Colors.red),
+                    );
+                  }
+                }
+              },
+              child: _isDeleting 
+                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
+                  : const Text('Eliminar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
