@@ -106,28 +106,20 @@ class _ProductStockScreenState extends State<ProductStockScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "${item.totalUnits} HUEVOS TOTALES",
+                    item.formatted.toUpperCase(),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
                       color: hasStock ? Colors.black87 : Colors.grey,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  // Formateado detallado (Cartones/Huevos)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: hasStock ? Colors.blue.shade50 : Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      item.formatted,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: hasStock ? Colors.blue.shade700 : Colors.grey,
-                      ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "TOTAL: ${item.totalUnits} HUEVOS",
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: hasStock ? Colors.blue.shade700 : Colors.grey,
                     ),
                   ),
                 ],
