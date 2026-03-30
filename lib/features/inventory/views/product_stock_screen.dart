@@ -147,128 +147,182 @@ class _ProductStockScreenState extends State<ProductStockScreen> {
   }
 
   void _showAdjustmentDialog(dynamic item, String type) {
-    final TextEditingController quantityController = TextEditingController();
+    final TextEditingController cartonsController = TextEditingController(text: '0');
+    final TextEditingController unitsController = TextEditingController(text: '0');
     final TextEditingController reasonController = TextEditingController();
     bool isSaving = false;
-    bool inCartons = true;
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              Icon(
-                type == 'in' ? Icons.add_business : Icons.inventory_2,
-                color: type == 'in' ? Colors.green : Colors.red,
-              ),
-              const SizedBox(width: 8),
-              Text(type == 'in' ? 'Registrar Ingreso' : 'Registrar Egreso'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Ajustando stock para: ${item.name}',
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey),
-              ),
-              const SizedBox(height: 20),
-              Row(
+        builder: (context, setDialogState) {
+          final int cartons = int.tryParse(cartonsController.text) ?? 0;
+          final int units = int.tryParse(unitsController.text) ?? 0;
+          final int totalToAdjust = (cartons * 30) + units;
+          
+          final int currentStock = item.totalUnits;
+          final int finalStock = type == 'in' 
+              ? currentStock + totalToAdjust 
+              : currentStock - totalToAdjust;
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Icon(
+                  type == 'in' ? Icons.add_circle : Icons.remove_circle,
+                  color: type == 'in' ? Colors.green : Colors.red,
+                ),
+                const SizedBox(width: 8),
+                Text(type == 'in' ? 'Registrar Ingreso' : 'Registrar Egreso'),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: quantityController,
-                      keyboardType: TextInputType.number,
-                      autofocus: true,
-                      decoration: InputDecoration(
-                        labelText: inCartons ? 'Cartones (30u)' : 'Huevos Sueltos',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: Icon(inCartons ? Icons.grid_view : Icons.egg),
-                      ),
+                  Text(
+                    'Producto: ${item.name}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                  ),
+                  const Divider(height: 24),
+                  
+                  const Text("CANTIDAD EN CARTONES (30u)", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: cartonsController,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setDialogState(() {}),
+                    decoration: const InputDecoration(
+                      hintText: '0',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.grid_view),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Column(
-                    children: [
-                      const Text('Modo', style: TextStyle(fontSize: 10)),
-                      Switch(
-                        value: inCartons,
-                        onChanged: (val) => setDialogState(() => inCartons = val),
-                        activeColor: Colors.blue,
-                      ),
-                    ],
+                  
+                  const SizedBox(height: 16),
+                  
+                  const Text("HUEVOS SUELTOS (UNIDADES)", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: unitsController,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setDialogState(() {}),
+                    decoration: const InputDecoration(
+                      hintText: '0',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.egg_outlined),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Resumen en tiempo real
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: type == 'in' ? Colors.green.shade50 : Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: type == 'in' ? Colors.green.shade200 : Colors.red.shade200),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Total a ajustar:", style: TextStyle(fontSize: 13)),
+                            Text("$totalToAdjust huevos", style: const TextStyle(fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        const Divider(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Stock Resultante:", style: TextStyle(fontSize: 13)),
+                            Builder(
+                              builder: (context) {
+                                if (finalStock < 0) {
+                                  return Text("$finalStock huevos", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red));
+                                }
+                                final c = finalStock ~/ 30;
+                                final u = finalStock % 30;
+                                String text = "";
+                                if (c > 0 && u > 0) text = "$c cartones y $u huevos";
+                                else if (c > 0) text = "$c cartón${c > 1 ? 'es' : ''}";
+                                else text = "$u huevos";
+                                
+                                return Text(text, style: const TextStyle(fontWeight: FontWeight.bold));
+                              }
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: reasonController,
+                    decoration: const InputDecoration(
+                      labelText: 'Motivo / Nota (Opcional)',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.note_alt_outlined),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: reasonController,
-                decoration: const InputDecoration(
-                  labelText: 'Motivo / Nota (Opcional)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.note_alt_outlined),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.pop(ctx),
+                child: const Text('CANCELAR'),
+              ),
+              ElevatedButton(
+                onPressed: (isSaving || totalToAdjust <= 0) ? null : () async {
+                  setDialogState(() => isSaving = true);
+                  
+                  final success = await context.read<InventoryProvider>().adjustStock(
+                    item.productSizeId,
+                    type,
+                    totalToAdjust,
+                    reasonController.text.isEmpty ? null : reasonController.text,
+                  );
+
+                  if (context.mounted) {
+                    if (success) {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Ajuste realizado con éxito'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } else {
+                      setDialogState(() => isSaving = false);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(context.read<InventoryProvider>().errorMessage ?? 'Error'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: type == 'in' ? Colors.green : Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),
+                child: isSaving 
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Text('GUARDAR AJUSTE'),
               ),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: isSaving ? null : () => Navigator.pop(ctx),
-              child: const Text('CANCELAR'),
-            ),
-            ElevatedButton(
-              onPressed: isSaving ? null : () async {
-                final qty = int.tryParse(quantityController.text);
-                if (qty == null || qty <= 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Por favor ingresa una cantidad válida')),
-                  );
-                  return;
-                }
-
-                setDialogState(() => isSaving = true);
-                
-                final totalUnits = inCartons ? qty * 30 : qty;
-                final success = await context.read<InventoryProvider>().adjustStock(
-                  item.productSizeId,
-                  type,
-                  totalUnits,
-                  reasonController.text.isEmpty ? null : reasonController.text,
-                );
-
-                if (context.mounted) {
-                  if (success) {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Ajuste realizado con éxito'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  } else {
-                    setDialogState(() => isSaving = false);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(context.read<InventoryProvider>().errorMessage ?? 'Error'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: type == 'in' ? Colors.green : Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              child: isSaving 
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : const Text('GUARDAR AJUSTE'),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -285,125 +339,179 @@ class _ProductStockScreenState extends State<ProductStockScreen> {
     }
 
     dynamic selectedItem = availableSizes.first;
-    final TextEditingController quantityController = TextEditingController();
+    final TextEditingController cartonsController = TextEditingController(text: '0');
+    final TextEditingController unitsController = TextEditingController(text: '0');
     final TextEditingController reasonController = TextEditingController();
     bool isSaving = false;
-    bool inCartons = true;
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.add_business, color: Colors.indigo),
-              SizedBox(width: 8),
-              Text('Ingresar Stock Inicial'),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+        builder: (context, setDialogState) {
+          final int cartons = int.tryParse(cartonsController.text) ?? 0;
+          final int units = int.tryParse(unitsController.text) ?? 0;
+          final int totalToAdjust = (cartons * 30) + units;
+          
+          final int currentStock = selectedItem.totalUnits;
+          final int finalStock = currentStock + totalToAdjust;
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
               children: [
-                DropdownButtonFormField<dynamic>(
-                  value: selectedItem,
-                  decoration: const InputDecoration(
-                    labelText: 'Tamaño de Huevo',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: availableSizes.map((item) {
-                    return DropdownMenuItem<dynamic>(
-                      value: item,
-                      child: Text(item.name),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    setDialogState(() => selectedItem = val);
-                  },
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: quantityController,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: inCartons ? 'Cartones (30u)' : 'Huevos Sueltos',
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
+                Icon(Icons.add_business, color: Colors.indigo),
+                const SizedBox(width: 8),
+                Text('Ingresar Stock Inicial'),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DropdownButtonFormField<dynamic>(
+                    value: selectedItem,
+                    decoration: const InputDecoration(
+                      labelText: 'Tamaño de Huevo',
+                      border: OutlineInputBorder(),
                     ),
-                    const SizedBox(width: 8),
-                    Column(
+                    items: availableSizes.map((item) {
+                      return DropdownMenuItem<dynamic>(
+                        value: item,
+                        child: Text(item.name),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      setDialogState(() => selectedItem = val);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  const Text("CANTIDAD EN CARTONES (30u)", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: cartonsController,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setDialogState(() {}),
+                    decoration: const InputDecoration(
+                      hintText: '0',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.grid_view),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  const Text("HUEVOS SUELTOS (UNIDADES)", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: unitsController,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setDialogState(() {}),
+                    decoration: const InputDecoration(
+                      hintText: '0',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.egg_outlined),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Resumen en tiempo real
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.indigo.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.indigo.shade200),
+                    ),
+                    child: Column(
                       children: [
-                        const Text('Modo', style: TextStyle(fontSize: 10)),
-                        Switch(
-                          value: inCartons,
-                          onChanged: (val) => setDialogState(() => inCartons = val),
-                          activeThumbColor: Colors.blue,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Total a ingresar:", style: TextStyle(fontSize: 13)),
+                            Text("$totalToAdjust huevos", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
+                          ],
+                        ),
+                        const Divider(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Stock Resultante:", style: TextStyle(fontSize: 13)),
+                            Builder(
+                              builder: (context) {
+                                final c = finalStock ~/ 30;
+                                final u = finalStock % 30;
+                                String text = "";
+                                if (c > 0 && u > 0) text = "$c cartones y $u huevos";
+                                else if (c > 0) text = "$c carton${c > 1 ? 'es' : ''}";
+                                else text = "$u huevos";
+                                
+                                return Text(text, style: const TextStyle(fontWeight: FontWeight.bold));
+                              }
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: reasonController,
-                  decoration: const InputDecoration(
-                    labelText: 'Motivo (Opcional)',
-                    border: OutlineInputBorder(),
                   ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: isSaving ? null : () => Navigator.pop(ctx),
-              child: const Text('CANCELAR'),
-            ),
-            ElevatedButton(
-              onPressed: isSaving ? null : () async {
-                final qty = int.tryParse(quantityController.text);
-                if (qty == null || qty <= 0) return;
-
-                setDialogState(() => isSaving = true);
-                
-                final totalUnits = inCartons ? qty * 30 : qty;
-                final success = await inventoryProvider.adjustStock(
-                  selectedItem.productSizeId,
-                  'in',
-                  totalUnits,
-                  reasonController.text.isEmpty ? null : reasonController.text,
-                );
-
-                if (context.mounted) {
-                  if (success) {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Stock inicial guardado'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  } else {
-                    setDialogState(() => isSaving = false);
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo,
-                foregroundColor: Colors.white,
+                  
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: reasonController,
+                    decoration: const InputDecoration(
+                      labelText: 'Motivo / Nota (Opcional)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
               ),
-              child: isSaving 
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : const Text('GUARDAR'),
             ),
-          ],
-        ),
+            actions: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.pop(ctx),
+                child: const Text('CANCELAR'),
+              ),
+              ElevatedButton(
+                onPressed: (isSaving || totalToAdjust <= 0) ? null : () async {
+                  setDialogState(() => isSaving = true);
+                  
+                  final success = await inventoryProvider.adjustStock(
+                    selectedItem.productSizeId,
+                    'in',
+                    totalToAdjust,
+                    reasonController.text.isEmpty ? null : reasonController.text,
+                  );
+
+                  if (context.mounted) {
+                    if (success) {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Stock inicial guardado'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } else {
+                      setDialogState(() => isSaving = false);
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.indigo,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+                child: isSaving 
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Text('GUARDAR INGRESO'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
