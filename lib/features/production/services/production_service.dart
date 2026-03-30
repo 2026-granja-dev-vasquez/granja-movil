@@ -9,11 +9,13 @@ class DailySummaryReport {
   final DateTime date;
   final List<ConsolidationModel> report;
   final int totalDamaged;
+  final int totalPending;
 
   DailySummaryReport({
     required this.date,
     required this.report,
     required this.totalDamaged,
+    required this.totalPending,
   });
 
   factory DailySummaryReport.fromJson(Map<String, dynamic> json) {
@@ -22,6 +24,7 @@ class DailySummaryReport {
       date: DateTime.parse(json['date']),
       report: reportData.map((item) => ConsolidationModel.fromJson(item)).toList(),
       totalDamaged: json['total_damaged'] ?? 0,
+      totalPending: json['total_pending'] ?? 0,
     );
   }
 }
@@ -159,6 +162,24 @@ class ProductionService {
     );
 
     if (response.statusCode != 200) throw Exception('Error al eliminar registro');
+  }
+
+  Future<int> getPendingBalance(String date) async {
+    final token = await _getToken();
+    final url = Uri.parse('${ApiConstants.baseUrl}/productions/pending-balance').replace(queryParameters: {
+      'date': date,
+    });
+
+    final response = await http.get(url, headers: {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    });
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      return data['pending_from_yesterday'] ?? 0;
+    }
+    throw Exception('Error al cargar saldo pendiente');
   }
 
   Future<List<DailySummaryReport>> getInventorySummary({String? date, String? startDate, String? endDate}) async {

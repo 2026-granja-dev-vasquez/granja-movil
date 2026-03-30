@@ -22,6 +22,7 @@ class ProductionProvider with ChangeNotifier {
   // Datos del día seleccionado (Para el balance/banner)
   List<BatchCollectionModel> _dailyBatchCollections = [];
   List<ProductionModel> _dailySortedProductions = [];
+  int _pendingFromYesterday = 0;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -35,12 +36,18 @@ class ProductionProvider with ChangeNotifier {
   
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  int get pendingFromYesterday => _pendingFromYesterday;
+  
+  set pendingFromYesterday(int value) {
+    _pendingFromYesterday = value;
+    notifyListeners();
+  }
 
   // Cálculos de balance (Basados en hoy o el día seleccionado)
   int get totalRawCount => _dailyBatchCollections.fold(0, (sum, item) => sum + item.quantity);
   int get totalSortedCount => _dailySortedProductions.fold(0, (sum, item) => sum + item.usefulQuantity + item.damagedQuantity);
   int get totalDailyDamaged => _dailySortedProductions.fold(0, (sum, item) => sum + item.damagedQuantity);
-  int get pendingEggs => totalRawCount - totalSortedCount;
+  int get pendingEggs => (_pendingFromYesterday + totalRawCount) - totalSortedCount;
 
   // Carga inicial: HOY + Historial (3d/7d)
   Future<void> fetchDailyData({String? date}) async {
@@ -51,9 +58,10 @@ class ProductionProvider with ChangeNotifier {
     try {
       final String targetDate = date ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
       
-      // 1. Balance del día
+      // 1. Balance del día y saldo anterior
       _dailyBatchCollections = await _service.getBatchCollections(date: targetDate);
       _dailySortedProductions = await _service.getSortedProductions(date: targetDate);
+      _pendingFromYesterday = await _service.getPendingBalance(targetDate);
 
       // 2. Historial con filtros
       final threeDaysAgo = DateFormat('yyyy-MM-dd').format(DateTime.now().subtract(const Duration(days: 3)));

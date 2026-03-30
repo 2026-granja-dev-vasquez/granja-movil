@@ -124,28 +124,27 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                         ),
                       ],
                     ),
-                    const Divider(),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _balanceItem(
-                          "TRAÍDO",
+                          "DE AYER",
+                          productionProvider.pendingFromYesterday,
+                          Colors.purple,
+                        ),
+                        _balanceItem(
+                          "COSECHA HOY",
                           productionProvider.totalRawCount,
                           Colors.blue,
                         ),
                         _balanceItem(
-                          "BUENOS",
+                          "CLASIFICADOS",
                           productionProvider.totalSortedCount -
                               productionProvider.totalDailyDamaged,
                           Colors.green,
                         ),
                         _balanceItem(
-                          "QUEBRADOS",
-                          productionProvider.totalDailyDamaged,
-                          Colors.red,
-                        ),
-                        _balanceItem(
-                          "PENDIENTE",
+                          "POR CLASIFICAR",
                           productionProvider.pendingEggs,
                           Colors.orange,
                         ),
@@ -154,6 +153,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
               const SizedBox(height: 24),
               InkWell(
                 onTap: _selectDate,
