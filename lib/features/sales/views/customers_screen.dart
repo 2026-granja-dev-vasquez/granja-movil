@@ -32,6 +32,22 @@ class _CustomersScreenState extends State<CustomersScreen> {
     }
   }
 
+  Future<void> _launchWhatsApp(String phoneNumber) async {
+    // Limpiar el número de teléfono (quitar espacios, guiones, etc.)
+    final cleanPhone = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    final Uri whatsappUri = Uri.parse("https://wa.me/$cleanPhone");
+    
+    if (await canLaunchUrl(whatsappUri)) {
+      await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir WhatsApp')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CustomerProvider>();
@@ -105,13 +121,28 @@ class _CustomersScreenState extends State<CustomersScreen> {
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (customer.phone != null && customer.phone!.isNotEmpty)
+                                  if (customer.phone != null && customer.phone!.isNotEmpty) ...[
+                                    InkWell(
+                                      onTap: () => _launchWhatsApp(customer.phone!),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Image.asset(
+                                          'assets/images/whatsapp.png',
+                                          width: 24,
+                                          height: 24,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
                                     IconButton(
-                                      icon: const Icon(Icons.phone, color: Colors.green),
+                                      icon: const Icon(Icons.phone, color: Colors.blue),
+                                      tooltip: 'Llamar',
                                       onPressed: () => _makePhoneCall(customer.phone!),
                                     ),
+                                  ],
                                   IconButton(
-                                    icon: const Icon(Icons.edit, color: Colors.indigo),
+                                    icon: const Icon(Icons.edit, color: Colors.grey),
+                                    tooltip: 'Editar',
                                     onPressed: () => Navigator.push(
                                       context,
                                       MaterialPageRoute(builder: (_) => AddCustomerScreen(customer: customer)),
