@@ -33,16 +33,25 @@ class _CustomersScreenState extends State<CustomersScreen> {
   }
 
   Future<void> _launchWhatsApp(String phoneNumber) async {
-    // Limpiar el número de teléfono (quitar espacios, guiones, etc.)
+    // Limpiar el número de teléfono
     final cleanPhone = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
     final Uri whatsappUri = Uri.parse("https://wa.me/$cleanPhone");
     
-    if (await canLaunchUrl(whatsappUri)) {
-      await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
-    } else {
+    try {
+      // Intentar primero como aplicación externa (abre la app directamente)
+      bool launched = await launchUrl(
+        whatsappUri, 
+        mode: LaunchMode.externalApplication,
+      );
+      
+      // Si falla como externalApplication (común en algunos Android), intentar por defecto
+      if (!launched) {
+        await launchUrl(whatsappUri, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo abrir WhatsApp')),
+          const SnackBar(content: Text('No se pudo abrir WhatsApp. Verifica que esté instalado.')),
         );
       }
     }
