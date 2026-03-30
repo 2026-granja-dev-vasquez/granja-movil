@@ -141,7 +141,7 @@ class OrderProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> updateOrderStatus(int orderId, String status, {DateTime? newDate, String? notes}) async {
+  Future<bool> updateOrderStatus(int orderId, String status, {DateTime? newDate, String? notes, bool createSale = false, Map<String, dynamic>? saleData}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -155,6 +155,11 @@ class OrderProvider with ChangeNotifier {
         payload['delivery_date'] = newDate.toUtc().toIso8601String();
       }
       if (notes != null) payload['notes'] = notes;
+      
+      if (createSale) {
+        payload['create_sale'] = true;
+        payload['sale_data'] = saleData;
+      }
 
       final response = await http.post(
         url,

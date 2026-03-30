@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import '../../cash/providers/cash_provider.dart';
 import '../models/order_model.dart';
 import '../providers/order_provider.dart';
 import 'add_order_screen.dart';
@@ -381,36 +382,275 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
   }
 
   void _confirmDelivery(OrderModel order) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar Entrega'),
+        content: const Text('¿Cómo deseas procesar esta entrega?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCELAR'),
+          ),
+          OutlinedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _processSimpleDelivery(order);
+            },
+            child: const Text('SOLO ENTREGAR'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showSaleProcessingDialog(order);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+            child: const Text('ENTREGAR Y VENDER'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSuccessDialog({required bool isSale}) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Column(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.green, size: 64),
+            const SizedBox(height: 16),
+            Text(isSale ? "¡Venta y Entrega Exitosa!" : "¡Entrega Registrada!", style: const TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          isSale 
+            ? "La venta se ha guardado, el inventario se descontó y el pedido pasó al historial."
+            : "El pedido se ha marcado como entregado y el inventario se descontó correctamente.",
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          Center(
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(200, 48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => Navigator.pop(context),
+              child: const Text("ENTERADO", style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  void _processSimpleDelivery(OrderModel order) async {
+    final success = await context.read<OrderProvider>().updateOrderStatus(order.id, 'delivered');
+    if (success && mounted) {
+      _showSuccessDialog(isSale: false);
+    }
+  }
+
+  void _showSaleProcessingDialog(OrderModel order) {
+    // Verificar caja abierta primero
+    final hasBox = context.read<CashProvider>().activeBox != null;
+    if (!hasBox) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Caja Cerrada'),
+          content: const Text('Debes tener una caja abierta para procesar ventas con pago.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('ENTENDIDO')),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // Inicializar controladores con precios sugeridos basados en la cantidad
+    final controllers = <int, TextEditingController>{};
+    final isCartonMode = <int, bool>{};
+
+    for (var item in order.items) {
+      final bool isMultipleOf30 = item.quantity >= 30 && item.quantity % 30 == 0;
+      isCartonMode[item.id!] = isMultipleOf30;
+      
+      final defaultPrice = isMultipleOf30 
+          ? (item.productSize?.cartonPrice ?? 0.0)
+          : (item.productSize?.unitPrice ?? 0.0);
+          
+      controllers[item.id!] = TextEditingController(text: defaultPrice.toStringAsFixed(2));
+    }
+
     bool isSaving = false;
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Marcar Entregado'),
-          content: const Text('¿Confirmas que este pedido ha sido entregado exitosamente?'),
-          actions: [
-            TextButton(
-              onPressed: isSaving ? null : () => Navigator.pop(context),
-              child: const Text('CANCELAR'),
+        builder: (context, setDialogState) {
+          double total = 0;
+          for (var item in order.items) {
+            final price = double.tryParse(controllers[item.id]!.text) ?? 0.0;
+            if (isCartonMode[item.id] == true) {
+              total += ((item.quantity / 30) * price);
+            } else {
+              total += (item.quantity * price);
+            }
+          }
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                const Icon(Icons.receipt_long, color: Colors.indigo),
+                const SizedBox(width: 10),
+                Expanded(child: Text('Cuenta de ${order.customer?.name ?? "Varios"}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900))),
+              ],
             ),
-            ElevatedButton(
-              onPressed: isSaving ? null : () async {
-                setDialogState(() => isSaving = true);
-                final success = await context.read<OrderProvider>().updateOrderStatus(order.id, 'delivered');
-                if (context.mounted) {
-                  if (success) {
-                    Navigator.pop(context);
-                  } else {
-                    setDialogState(() => isSaving = false);
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Divider(),
+                    ...order.items.map((item) {
+                      final isCarton = isCartonMode[item.id] == true;
+                      final double subtotal = (isCarton ? (item.quantity / 30) : item.quantity) * (double.tryParse(controllers[item.id]!.text) ?? 0.0);
+                      
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${item.formattedQuantity} ${item.productSize?.name ?? "Huevo"}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.indigo),
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 3,
+                                  child: TextField(
+                                    controller: controllers[item.id],
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    decoration: InputDecoration(
+                                      labelText: isCarton ? 'Q cada Cartón' : 'Q cada Unidad',
+                                      prefixText: 'Q ',
+                                      isDense: true,
+                                      border: const OutlineInputBorder(),
+                                    ),
+                                    onChanged: (_) => setDialogState(() {}),
+                                  ),
+                                ),
+                                const SizedBox(width: 15),
+                                Expanded(
+                                  flex: 2,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      const Text('Subtotal', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                      Text('Q ${subtotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.indigo.shade900,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [BoxShadow(color: Colors.indigo.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
+                      ),
+                      child: Column(
+                        children: [
+                          const Text('TOTAL A PAGAR', style: TextStyle(color: Colors.indigoAccent, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 2)),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Q ${total.toStringAsFixed(2)}',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 26),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.pop(context),
+                child: const Text('CANCELAR'),
+              ),
+              ElevatedButton(
+                onPressed: isSaving ? null : () async {
+                  setDialogState(() => isSaving = true);
+                  
+                  final saleItems = order.items.map((it) {
+                    final price = double.tryParse(controllers[it.id]!.text) ?? 0.0;
+                    final isCarton = isCartonMode[it.id] == true;
+                    
+                    // Backend siempre espera unit_price (por huevo)
+                    final unitPriceForBackend = isCarton ? (price / 30) : price;
+
+                    return {
+                      'product_size_id': it.productSizeId,
+                      'quantity': it.quantity,
+                      'unit_price': unitPriceForBackend,
+                    };
+                  }).toList();
+
+                  final success = await context.read<OrderProvider>().updateOrderStatus(
+                    order.id, 
+                    'delivered',
+                    createSale: true,
+                    saleData: {
+                      'date': DateTime.now().toIso8601String().split('T')[0], // Enviar fecha local YYYY-MM-DD
+                      'paid_amount': total, // El pago es el total calculado
+                      'items': saleItems,
+                    }
+                  );
+
+                  if (context.mounted) {
+                    if (success) {
+                      Navigator.pop(context); // Cerrar diálogo de procesamiento
+                      _showSuccessDialog(isSale: true);
+                    } else {
+                      setDialogState(() => isSaving = false);
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.read<OrderProvider>().errorMessage ?? 'Error al procesar')));
+                    }
                   }
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-              child: isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('SÍ, ENTREGADO'),
-            ),
-          ],
-        ),
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                child: isSaving 
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Text('PROCESAR VENTA'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -535,4 +775,3 @@ class _ActionButton extends StatelessWidget {
     );
   }
 }
-
