@@ -22,6 +22,212 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
     });
   }
 
+  Widget _buildDateAccordion(DateTime date, List<OrderModel> orders, DateTime today, DateTime tomorrow) {
+    if (orders.isEmpty) return const SizedBox.shrink();
+
+    // 1. Calculate Totals for this specific day
+    final totalsBySize = <int, int>{};
+    final sizeNames = <int, String>{};
+
+    for (var order in orders) {
+      for (var item in order.items) {
+        final sid = item.productSizeId;
+        totalsBySize[sid] = (totalsBySize[sid] ?? 0) + item.quantity;
+        sizeNames[sid] = item.productSize?.name ?? '...';
+      }
+    }
+
+    String title;
+    bool isToday = date.year == today.year && date.month == today.month && date.day == today.day;
+    bool isTomorrow = date.year == tomorrow.year && date.month == tomorrow.month && date.day == tomorrow.day;
+
+    if (isToday) {
+      title = "HOY";
+    } else if (isTomorrow) {
+      title = "MAÑANA";
+    } else {
+      title = DateFormat('EEEE dd/MM', 'es').format(date).toUpperCase();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: isToday ? Colors.amber.shade50 : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isToday ? Colors.amber.shade200 : Colors.grey.shade200,
+          width: isToday ? 2 : 1,
+        ),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: false, // Siempre cerrado por defecto
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isToday ? Colors.amber : Colors.indigo.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isToday ? Icons.today : Icons.calendar_today,
+              color: isToday ? Colors.white : Colors.indigo,
+              size: 20,
+            ),
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 14,
+              color: isToday ? Colors.brown : Colors.indigo.shade900,
+              letterSpacing: 1.1,
+            ),
+          ),
+          subtitle: totalsBySize.isEmpty 
+            ? null 
+            : Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: totalsBySize.entries.map((e) {
+                    final q = e.value;
+                    final c = q ~/ 30;
+                    final u = q % 30;
+                    String d = "";
+                    if (c > 0) d += "$c cart.";
+                    if (u > 0) d += "${d.isEmpty ? '' : ' '}$u uni.";
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Row(
+                        children: [
+                          Icon(Icons.egg, size: 14, color: isToday ? Colors.amber.shade700 : Colors.grey),
+                          const SizedBox(width: 8),
+                          Text(
+                            "$d ${sizeNames[e.key]}",
+                            style: TextStyle(
+                              fontSize: 14, // Aumentado para mejor legibilidad
+                              color: isToday ? Colors.brown.shade700 : Colors.grey.shade800,
+                              fontWeight: FontWeight.w900, // Más grueso para resaltar
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+          children: [
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                children: orders.map((order) => _buildOrderCard(order)).toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrderCard(OrderModel order) {
+    final isOverdue = order.isOverdue;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isOverdue ? Colors.red.shade300 : Colors.grey.shade100,
+          width: isOverdue ? 1.5 : 1,
+        ),
+      ),
+      color: isOverdue ? Colors.red.shade50.withOpacity(0.3) : Colors.grey.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    order.customer?.name ?? 'Cliente Desconocido',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.indigo),
+                  ),
+                ),
+                if (isOverdue)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.red.shade100, borderRadius: BorderRadius.circular(8)),
+                    child: const Text("ATRASADO", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.access_time, size: 14, color: isOverdue ? Colors.red : Colors.grey),
+                const SizedBox(width: 6),
+                Text(
+                  DateFormat('hh:mm a').format(order.deliveryDate),
+                  style: TextStyle(fontSize: 13, color: isOverdue ? Colors.red : Colors.black87, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: order.items.map((it) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.indigo.shade50),
+                ),
+                child: Text(
+                  "${it.formattedQuantity} ${it.productSize?.name ?? ''}",
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.indigo),
+                ),
+              )).toList(),
+            ),
+            if (order.notes != null && order.notes!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text('Nota: ${order.notes}', style: const TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic)),
+            ],
+            const Divider(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _ActionButton(
+                  icon: Icons.check_circle_outline,
+                  color: Colors.green,
+                  label: 'Entregar',
+                  onTap: () => _confirmDelivery(order),
+                ),
+                _ActionButton(
+                  icon: Icons.update,
+                  color: Colors.orange,
+                  label: 'Posponer',
+                  onTap: () => _showPostponeDialog(order),
+                ),
+                _ActionButton(
+                  icon: Icons.cancel_outlined,
+                  color: Colors.red,
+                  label: 'Anular',
+                  onTap: () => _showCancelDialog(order),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showPostponeDialog(OrderModel order) {
     bool isSaving = false;
     DateTime newDate = order.deliveryDate;
@@ -271,180 +477,14 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
             sortedDates.insert(0, today);
           }
 
-          // Flatten for ListView
-          final listItems = <dynamic>[];
-          for (var date in sortedDates) {
-            listItems.add(date); // Header
-            final orders = ordersByDate[date] ?? [];
-            if (orders.isEmpty && date == today) {
-              listItems.add("No hay entregas para hoy");
-            } else {
-              listItems.addAll(orders);
-            }
-          }
-
+          // UI Builders
           return ListView.builder(
-            padding: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 100),
-            itemCount: listItems.length,
+            padding: const EdgeInsets.all(16),
+            itemCount: sortedDates.length,
             itemBuilder: (context, index) {
-              final item = listItems[index];
-
-              if (item is DateTime) {
-                String title;
-                if (item == today) {
-                  title = "HOY";
-                } else if (item == tomorrow) {
-                  title = "MAÑANA";
-                } else {
-                  title = DateFormat('EEEE dd/MM', 'es').format(item).toUpperCase();
-                }
-                
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Row(
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 14, 
-                          fontWeight: FontWeight.w900, 
-                          color: Colors.grey.shade700,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(child: Divider(color: Colors.grey.shade300)),
-                    ],
-                  ),
-                );
-              }
-
-              if (item is String) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: Center(
-                    child: Text(
-                      item,
-                      style: const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
-                    ),
-                  ),
-                );
-              }
-
-              final order = item as OrderModel;
-              final isOverdue = order.isOverdue;
-
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: isOverdue ? const BorderSide(color: Colors.red, width: 1.5) : BorderSide.none,
-                ),
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              order.customer?.name ?? 'Cliente Desconocido',
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo),
-                            ),
-                          ),
-                          if (isOverdue)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(color: Colors.red.shade100, borderRadius: BorderRadius.circular(8)),
-                              child: const Text("ATRASADO", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
-                            )
-                          else if (order.isPostponed)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(color: Colors.orange.shade100, borderRadius: BorderRadius.circular(8)),
-                              child: const Text("POSPUESTO", style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold)),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.access_time_filled, size: 16, color: isOverdue ? Colors.red : Colors.grey.shade600),
-                          const SizedBox(width: 6),
-                          Text(
-                            DateFormat('hh:mm a').format(order.deliveryDate),
-                            style: TextStyle(fontSize: 14, color: isOverdue ? Colors.red : Colors.black87, fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                      if (order.items.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.indigo.shade50.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "Detalle de entrega:",
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.indigo),
-                              ),
-                              const SizedBox(height: 4),
-                              Wrap(
-                                spacing: 8,
-                                children: order.items.map((it) => Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(color: Colors.indigo.shade100),
-                                  ),
-                                  child: Text(
-                                    "${it.formattedQuantity} ${it.productSize?.name ?? ''}",
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.indigo),
-                                  ),
-                                )).toList(),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      if (order.notes != null && order.notes!.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text('Nota: ${order.notes}', style: const TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic)),
-                      ],
-                      const Divider(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          TextButton.icon(
-                            onPressed: () => _confirmDelivery(order),
-                            icon: const Icon(Icons.check_circle_outline, color: Colors.green, size: 20),
-                            label: const Text('Entregar', style: TextStyle(color: Colors.green)),
-                          ),
-                          TextButton.icon(
-                            onPressed: () => _showPostponeDialog(order),
-                            icon: const Icon(Icons.update, color: Colors.orange, size: 20),
-                            label: const Text('Posponer', style: TextStyle(color: Colors.orange)),
-                          ),
-                          IconButton(
-                            onPressed: () => _showCancelDialog(order),
-                            icon: const Icon(Icons.cancel_outlined, color: Colors.red),
-                            tooltip: 'Anular Pedido',
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
+              final date = sortedDates[index];
+              final orders = ordersByDate[date] ?? [];
+              return _buildDateAccordion(date, orders, today, tomorrow);
             },
           );
         },
@@ -459,3 +499,40 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
     );
   }
 }
+
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ActionButton({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
