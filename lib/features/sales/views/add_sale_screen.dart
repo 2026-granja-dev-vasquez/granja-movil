@@ -33,6 +33,7 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
       context.read<CustomerProvider>().fetchCustomers();
       context.read<ProductProvider>().fetchSizes();
       context.read<ProductionProvider>().fetchDailyData();
+      context.read<CashProvider>().fetchActiveBox();
     });
   }
 

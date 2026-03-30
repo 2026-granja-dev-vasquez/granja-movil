@@ -122,6 +122,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ReminderProvider>().syncReminders();
+      context.read<CashProvider>().fetchActiveBox();
       context.read<OrderProvider>().fetchPendingOrders().then((_) {
         _checkOverdueOrders();
       });
