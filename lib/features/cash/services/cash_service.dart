@@ -102,4 +102,17 @@ class CashService {
     }
     throw Exception('Error al obtener detalle de caja');
   }
+
+  Future<CashBoxModel> updateBox(int id, String name) async {
+    final response = await http.patch(
+      Uri.parse('${ApiConstants.baseUrl}/cash/history/$id'),
+      headers: await _getHeaders(),
+      body: jsonEncode({'name': name}),
+    );
+
+    if (response.statusCode == 200) {
+      return CashBoxModel.fromJson(jsonDecode(response.body));
+    }
+    throw Exception('Error al actualizar nombre de caja');
+  }
 }

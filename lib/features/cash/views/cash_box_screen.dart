@@ -98,8 +98,15 @@ class _CashBoxScreenState extends State<CashBoxScreen> {
               : 'Gestión de Caja',
         ),
         actions: [
+          if (activeBox != null)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Renombrar Caja',
+              onPressed: () => _showRenameDialog(activeBox),
+            ),
           IconButton(
             icon: const Icon(Icons.history),
+            tooltip: 'Historial',
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const CashHistoryScreen()),
@@ -696,6 +703,49 @@ class _CashBoxScreenState extends State<CashBoxScreen> {
               child: _isSavingClose 
                   ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Text("CERRAR"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  void _showRenameDialog(dynamic box) {
+    final controller = TextEditingController(text: box.name);
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text("Renombrar Caja"),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: "Nuevo nombre",
+              border: OutlineInputBorder(),
+            ),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(context),
+              child: const Text("CANCELAR"),
+            ),
+            ElevatedButton(
+              onPressed: isSaving ? null : () async {
+                final newName = controller.text.trim();
+                if (newName.isNotEmpty && newName != box.name) {
+                  setState(() => isSaving = true);
+                  await context.read<CashProvider>().updateCashBoxName(box.id, newName);
+                  if (context.mounted) Navigator.pop(context);
+                } else if (newName == box.name) {
+                  Navigator.pop(context);
+                }
+              },
+              child: isSaving 
+                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text("GUARDAR"),
             ),
           ],
         ),

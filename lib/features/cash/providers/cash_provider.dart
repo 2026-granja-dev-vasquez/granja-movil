@@ -116,4 +116,30 @@ class CashProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<void> updateCashBoxName(int id, String newName) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final updatedBox = await _service.updateBox(id, newName);
+      
+      // Si es la caja activa, actualizarla
+      if (_activeBox?.id == id) {
+        _activeBox = updatedBox;
+      }
+
+      // Actualizar en el historial si existe
+      final index = _history.indexWhere((box) => box.id == id);
+      if (index != -1) {
+        _history[index] = updatedBox;
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

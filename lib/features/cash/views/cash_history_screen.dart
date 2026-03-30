@@ -135,6 +135,13 @@ class _CashHistoryScreenState extends State<CashHistoryScreen> {
                 style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.black87),
               ),
             ),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 16, color: Colors.indigo),
+              onPressed: () => _showRenameDialog(session),
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
             const SizedBox(width: 8),
             _buildStatusBadge(isClosed),
           ],
@@ -305,6 +312,49 @@ class _CashHistoryScreenState extends State<CashHistoryScreen> {
           const SizedBox(height: 16),
           const Text("No hay historial de cajas registrado.", style: TextStyle(color: Colors.grey)),
         ],
+      ),
+    );
+  }
+  void _showRenameDialog(CashBoxModel session) {
+    final controller = TextEditingController(text: session.name);
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text("Renombrar Caja Histórica"),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: "Nuevo nombre",
+              border: OutlineInputBorder(),
+            ),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(context),
+              child: const Text("CANCELAR"),
+            ),
+            ElevatedButton(
+              onPressed: isSaving ? null : () async {
+                final newName = controller.text.trim();
+                if (newName.isNotEmpty && newName != session.name) {
+                  setState(() => isSaving = true);
+                  await context.read<CashProvider>().updateCashBoxName(session.id, newName);
+                  if (context.mounted) Navigator.pop(context);
+                } else if (newName == session.name) {
+                  Navigator.pop(context);
+                }
+              },
+              child: isSaving 
+                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text("GUARDAR"),
+            ),
+          ],
+        ),
       ),
     );
   }
