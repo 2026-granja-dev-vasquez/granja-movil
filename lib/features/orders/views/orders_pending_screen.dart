@@ -528,22 +528,6 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
   }
 
   void _showSaleProcessingDialog(OrderModel order) {
-    // Verificar caja abierta primero
-    final hasBox = context.read<CashProvider>().activeBox != null;
-    if (!hasBox) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Caja Cerrada'),
-          content: const Text('Debes tener una caja abierta para procesar ventas con pago.'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('ENTENDIDO')),
-          ],
-        ),
-      );
-      return;
-    }
-
     // Inicializar controladores con precios sugeridos basados en la cantidad
     final controllers = <int, TextEditingController>{};
     final isCartonMode = <int, bool>{};
@@ -560,6 +544,7 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
     }
 
     bool isSaving = false;
+    bool paymentReceived = true;
 
     showDialog(
       context: context,
@@ -645,6 +630,38 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
                         ),
                       );
                     }).toList(),
+                    const SizedBox(height: 16),
+                    // Nuevo switch para pago recibido
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: paymentReceived ? Colors.green.shade50 : Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: paymentReceived ? Colors.green.shade100 : Colors.orange.shade100),
+                      ),
+                      child: SwitchListTile(
+                        title: Text(
+                          paymentReceived ? '¡Pago Recibido!' : 'Venta al Crédito',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold, 
+                            color: paymentReceived ? Colors.green.shade900 : Colors.orange.shade900
+                          ),
+                        ),
+                        subtitle: Text(
+                          paymentReceived 
+                            ? 'El dinero se registrará en caja.' 
+                            : 'Mandar a cuentas por cobrar.',
+                          style: TextStyle(fontSize: 12, color: paymentReceived ? Colors.green.shade700 : Colors.orange.shade700),
+                        ),
+                        secondary: Icon(
+                          paymentReceived ? Icons.monetization_on : Icons.credit_card,
+                          color: paymentReceived ? Colors.green : Colors.orange,
+                        ),
+                        value: paymentReceived,
+                        onChanged: (val) => setDialogState(() => paymentReceived = val),
+                        activeColor: Colors.green,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     Container(
                       width: double.infinity,
@@ -676,6 +693,17 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
               ),
               ElevatedButton(
                 onPressed: isSaving ? null : () async {
+                  // VALIDAR CAJA SOLO SI SE RECIBE PAGO
+                  if (paymentReceived) {
+                    final hasBox = context.read<CashProvider>().activeBox != null;
+                    if (!hasBox) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Debes tener una caja abierta para ventas con pago.'))
+                      );
+                      return;
+                    }
+                  }
+
                   setDialogState(() => isSaving = true);
                   
                   final saleItems = order.items.map((it) {
@@ -698,8 +726,9 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
                     createSale: true,
                     saleData: {
                       'date': DateTime.now().toIso8601String().split('T')[0], // Enviar fecha local YYYY-MM-DD
-                      'paid_amount': total, // El pago es el total calculado
+                      'paid_amount': paymentReceived ? total : 0.0, 
                       'items': saleItems,
+                      'notes': paymentReceived ? null : 'Crédito generado desde Pedido #${order.id}',
                     }
                   );
 

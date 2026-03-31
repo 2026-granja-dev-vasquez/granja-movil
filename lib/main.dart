@@ -31,6 +31,7 @@ import 'features/reminders/providers/reminder_provider.dart';
 import 'features/reminders/views/reminder_list_screen.dart';
 import 'features/orders/providers/order_provider.dart';
 import 'features/orders/views/orders_pending_screen.dart';
+import 'features/sales/models/sale_model.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -133,6 +134,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context.read<OrderProvider>().fetchPendingOrders().then((_) {
         _checkOverdueOrders();
       });
+      context.read<SaleProvider>().fetchSales();
     });
 
     _notifSub = NotificationService().selectNotificationStream.stream.listen((
@@ -381,6 +383,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final user = context.read<AuthProvider>().user;
     final isAdmin = user?.role == 'admin';
+    final saleProvider = context.watch<SaleProvider>();
+
+    // Calcular clientes únicos con deudas pendientes
+    final pendingCustomersCount = saleProvider.sales
+        .where((s) => s.status != SaleStatus.paid)
+        .map((s) => s.customerId)
+        .toSet()
+        .length;
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -489,6 +499,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         MaterialPageRoute(builder: (_) => const CashBoxScreen()),
                       ),
                     ),
+                  _QuickActionCard(
+                    title: 'Cuentas por Cobrar',
+                    icon: Icons.assignment_late_outlined,
+                    color: Colors.redAccent,
+                    badgeCount: pendingCustomersCount,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AccountsReceivableScreen()),
+                    ),
+                  ),
                 ],
               ),
 
@@ -751,12 +771,14 @@ class _QuickActionCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
+  final int badgeCount;
 
   const _QuickActionCard({
     required this.title,
     required this.icon,
     required this.color,
     required this.onTap,
+    this.badgeCount = 0,
   });
 
   @override
@@ -779,13 +801,44 @@ class _QuickActionCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 30),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: color, size: 30),
+                ),
+                if (badgeCount > 0)
+                  Positioned(
+                    right: -4,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade700,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 20,
+                        minHeight: 20,
+                      ),
+                      child: Text(
+                        badgeCount > 9 ? '9+' : badgeCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 12),
             Padding(
