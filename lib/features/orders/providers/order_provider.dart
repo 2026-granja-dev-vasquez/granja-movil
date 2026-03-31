@@ -205,6 +205,58 @@ class OrderProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> updateOrder(int orderId, int customerId, DateTime deliveryDate, List<Map<String, dynamic>> items, {String? notes}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final token = await _authService.getToken();
+      final url = Uri.parse(ApiConstants.ordersUpdate(orderId));
+      
+      final response = await http.patch(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'customer_id': customerId,
+          'delivery_date': deliveryDate.toUtc().toIso8601String(),
+          'items': items,
+          'notes': notes,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final updatedOrder = OrderModel.fromJson(jsonDecode(response.body));
+        
+        // Update in pending list
+        final index = _pendingOrders.indexWhere((o) => o.id == orderId);
+        if (index != -1) {
+          _pendingOrders[index] = updatedOrder;
+          _pendingOrders.sort((a, b) => a.deliveryDate.compareTo(b.deliveryDate));
+        }
+
+        // Reschedule Notification
+        await _cancelOrderNotification(orderId);
+        await _scheduleOrderNotification(updatedOrder);
+        
+        return true;
+      } else {
+        _errorMessage = 'Error al actualizar el pedido';
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Error de red: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   // Helper method for notifications using an offset id to avoid conflicts with standard reminders
   Future<void> _scheduleOrderNotification(OrderModel order) async {
     // Passing the actual delivery date; the service will handle the 1-hour-before logic

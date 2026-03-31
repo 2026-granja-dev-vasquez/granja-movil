@@ -6,9 +6,11 @@ import '../../sales/providers/customer_provider.dart';
 import '../../sales/models/customer_model.dart';
 import '../../inventory/providers/inventory_provider.dart';
 import '../../../shared/widgets/loading_button.dart';
+import '../models/order_model.dart' as order_model;
 
 class AddOrderScreen extends StatefulWidget {
-  const AddOrderScreen({super.key});
+  final order_model.OrderModel? order;
+  const AddOrderScreen({super.key, this.order});
 
   @override
   State<AddOrderScreen> createState() => _AddOrderScreenState();
@@ -28,6 +30,28 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.order != null) {
+      _selectedCustomer = widget.order!.customer;
+      _selectedDate = widget.order!.deliveryDate;
+      _selectedTime = TimeOfDay.fromDateTime(widget.order!.deliveryDate);
+      _notesController.text = widget.order!.notes ?? "";
+      
+      for (var item in widget.order!.items) {
+        final int c = item.quantity ~/ 30;
+        final int u = item.quantity % 30;
+        String f = "";
+        if (c > 0) f += "$c ct";
+        if (u > 0) f += "${f.isEmpty ? '' : ' '}$u u";
+        
+        _items.add({
+          'product_size_id': item.productSizeId,
+          'name': item.productSize?.name ?? '...',
+          'quantity': item.quantity,
+          'formatted_qty': f,
+        });
+      }
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CustomerProvider>().fetchCustomers();
       context.read<InventoryProvider>().fetchInventory();
@@ -58,8 +82,8 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       _selectedTime.minute,
     );
 
-    // Validate that the scheduled time is in the future
-    if (finalDateTime.isBefore(DateTime.now())) {
+    // Validate that the scheduled time is in the future (solo si es nuevo o cambió fecha)
+    if (widget.order == null && finalDateTime.isBefore(DateTime.now())) {
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('La hora de entrega debe ser en el futuro')),
@@ -75,19 +99,30 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       return;
     }
 
-    final success = await context.read<OrderProvider>().createOrder(
-      _selectedCustomer!.id!,
-      finalDateTime,
-      _items,
-      notes: _notesController.text.isEmpty ? null : _notesController.text,
-    );
+    final bool success;
+    if (widget.order != null) {
+      success = await context.read<OrderProvider>().updateOrder(
+        widget.order!.id,
+        _selectedCustomer!.id!,
+        finalDateTime,
+        _items,
+        notes: _notesController.text.isEmpty ? null : _notesController.text,
+      );
+    } else {
+      success = await context.read<OrderProvider>().createOrder(
+        _selectedCustomer!.id!,
+        finalDateTime,
+        _items,
+        notes: _notesController.text.isEmpty ? null : _notesController.text,
+      );
+    }
 
     if (mounted) {
       if (success) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pedido programado con éxito'),
+          SnackBar(
+            content: Text(widget.order != null ? 'Pedido actualizado con éxito' : 'Pedido programado con éxito'),
             backgroundColor: Colors.green,
           ),
         );
@@ -106,7 +141,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nuevo Pedido'),
+        title: Text(widget.order != null ? 'Editar Pedido' : 'Nuevo Pedido'),
       ),
       body: Form(
         key: _formKey,
@@ -255,11 +290,15 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
             const SizedBox(height: 24),
             TextField(
               controller: _notesController,
-              maxLines: 2,
+              maxLines: 4,
+              minLines: 2,
+              style: const TextStyle(fontSize: 16),
               decoration: const InputDecoration(
                 labelText: 'Notas Adicionales (Opcional)',
+                hintText: 'Ej: Entregar por la puerta trasera...',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.note_alt_outlined),
+                alignLabelWithHint: true,
               ),
             ),
 

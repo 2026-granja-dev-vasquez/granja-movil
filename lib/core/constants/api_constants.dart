@@ -26,5 +26,6 @@ class ApiConstants {
   static String get orders => '$baseUrl/orders';
   static String get ordersHistory => '$baseUrl/orders/history';
   static String ordersStatus(int id) => '$baseUrl/orders/$id/status';
+  static String ordersUpdate(int id) => '$baseUrl/orders/$id';
 }
 

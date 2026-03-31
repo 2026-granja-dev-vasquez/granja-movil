@@ -196,8 +196,34 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
               )).toList(),
             ),
             if (order.notes != null && order.notes!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text('Nota: ${order.notes}', style: const TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic)),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.blueGrey.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.blueGrey.shade100),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.note_alt_outlined, size: 18, color: Colors.blueGrey),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        order.notes!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.blueGrey.shade900,
+                          fontWeight: FontWeight.w500,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
             const Divider(height: 24),
             Row(
@@ -214,6 +240,17 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
                   color: Colors.orange,
                   label: 'Posponer',
                   onTap: () => _showPostponeDialog(order),
+                ),
+                _ActionButton(
+                  icon: Icons.edit,
+                  color: Colors.blue,
+                  label: 'Modificar',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => AddOrderScreen(order: order)),
+                    );
+                  },
                 ),
                 _ActionButton(
                   icon: Icons.cancel_outlined,
