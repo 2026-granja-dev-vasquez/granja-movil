@@ -451,7 +451,40 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
   }
 
   void _processSimpleDelivery(OrderModel order) async {
-    final success = await context.read<OrderProvider>().updateOrderStatus(order.id, 'delivered');
+    // Generar resumen en cartones para la nota
+    String itemNote = "Entregado sin cobrar: ";
+    final List<String> parts = [];
+    for (var it in order.items) {
+      final int c = it.quantity ~/ 30;
+      final int u = it.quantity % 30;
+      String d = "";
+      if (c > 0) d += "$c cart.";
+      if (u > 0) d += "${d.isEmpty ? '' : ' '}$u uni.";
+      parts.add("$d ${it.productSize?.name ?? 'Huevo'}");
+    }
+    itemNote += parts.join(", ");
+
+    // Preparar saleData con montos en 0
+    final saleItems = order.items.map((it) => {
+      'product_size_id': it.productSizeId,
+      'quantity': it.quantity,
+      'unit_price': 0.0,
+    }).toList();
+
+    final saleData = {
+      'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      'paid_amount': 0.0,
+      'items': saleItems,
+      'notes': itemNote,
+    };
+
+    final success = await context.read<OrderProvider>().updateOrderStatus(
+      order.id, 
+      'delivered',
+      createSale: true,
+      saleData: saleData,
+    );
+    
     if (success && mounted) {
       _showSuccessDialog(isSale: false);
     }
