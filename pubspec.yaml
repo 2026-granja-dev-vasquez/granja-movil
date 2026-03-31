@@ -48,6 +48,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   url_launcher: ^6.3.2
+  fl_chart: ^0.70.2
 
   # Notificaciones Locales y Zona Horaria (Módulo de Recordatorios)
   flutter_local_notifications: ^17.1.2

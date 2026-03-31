@@ -116,6 +116,19 @@ class ProductionService {
     if (response.statusCode != 201) throw Exception('Error al registrar recolecta');
   }
 
+  Future<void> deleteBatchCollection(int id) async {
+    final token = await _getToken();
+    final response = await http.delete(
+      Uri.parse('${ApiConstants.baseUrl}/daily-collections/$id'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode != 200) throw Exception('Error al eliminar recolecta');
+  }
+
   // --- PASO 2: CLASIFICACIÓN DE INVENTARIO ---
   Future<List<ProductionModel>> getSortedProductions({String? date, String? startDate}) async {
     final token = await _getToken();

@@ -1,4 +1,4 @@
-import 'package:intl/intl.dart';
+
 
 // PASO 1: Recolecta bruta por Lote
 class BatchCollectionModel {
@@ -30,7 +30,7 @@ class BatchCollectionModel {
     return {
       'batch_id': batchId,
       'quantity': quantity,
-      'date': DateFormat('yyyy-MM-dd').format(date),
+      'date': date.toIso8601String(),
     };
   }
 }
@@ -76,7 +76,7 @@ class ProductionModel {
       'product_size_id': productSizeId,
       'useful_quantity': usefulQuantity,
       'damaged_quantity': damagedQuantity,
-      'date': DateFormat('yyyy-MM-dd').format(date),
+      'date': date.toIso8601String(),
     };
   }
 }

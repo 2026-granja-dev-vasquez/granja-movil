@@ -16,10 +16,21 @@ class AddBatchCollectionScreen extends StatefulWidget {
 class _AddBatchCollectionScreenState extends State<AddBatchCollectionScreen> {
   final _formKey = GlobalKey<FormState>();
   int? _selectedBatchId;
+  final TextEditingController _cartonsController = TextEditingController(text: '0');
+  final TextEditingController _unitsController = TextEditingController(text: '0');
   int _cartons = 0;
   int _units = 0;
   DateTime _selectedDate = DateTime.now();
   bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _cartonsController.dispose();
+    _unitsController.dispose();
+    super.dispose();
+  }
+
+
 
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
@@ -39,6 +50,9 @@ class _AddBatchCollectionScreenState extends State<AddBatchCollectionScreen> {
     );
     if (picked != null && picked != _selectedDate) {
       setState(() => _selectedDate = picked);
+      if (mounted) {
+        context.read<ProductionProvider>().fetchSpecificDate(picked);
+      }
     }
   }
 
@@ -106,9 +120,16 @@ class _AddBatchCollectionScreenState extends State<AddBatchCollectionScreen> {
                       (b) => DropdownMenuItem(value: b.id, child: Text(b.name)),
                     )
                     .toList(),
-                onChanged: (val) => setState(() => _selectedBatchId = val),
+                onChanged: (val) {
+                  setState(() => _selectedBatchId = val);
+                },
                 validator: (val) => val == null ? 'Selecciona un lote' : null,
               ),
+              if (_selectedBatchId != null)
+                CollectionDashboard(
+                  batchId: _selectedBatchId!,
+                  date: _selectedDate,
+                ),
               const SizedBox(height: 32),
               const Text(
                 '¿Cuántos huevos traes?',
@@ -119,6 +140,7 @@ class _AddBatchCollectionScreenState extends State<AddBatchCollectionScreen> {
                 children: [
                   Expanded(
                     child: TextFormField(
+                      controller: _cartonsController,
                       decoration: const InputDecoration(
                         labelText: 'Cartones',
                         helperText: 'De 30 huevos',
@@ -130,6 +152,7 @@ class _AddBatchCollectionScreenState extends State<AddBatchCollectionScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: TextFormField(
+                      controller: _unitsController,
                       decoration: const InputDecoration(
                         labelText: 'Huevos Sueltos',
                         helperText: 'Unidades',
@@ -140,6 +163,7 @@ class _AddBatchCollectionScreenState extends State<AddBatchCollectionScreen> {
                   ),
                 ],
               ),
+
               const SizedBox(height: 48),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -199,6 +223,146 @@ class _AddBatchCollectionScreenState extends State<AddBatchCollectionScreen> {
           ),
         ),
       );
+    }
+  }
+
+
+}
+
+class CollectionDashboard extends StatelessWidget {
+  final int batchId;
+  final DateTime date;
+
+  const CollectionDashboard({
+    super.key,
+    required this.batchId,
+    required this.date,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ProductionProvider>(
+      builder: (context, provider, _) {
+        if (provider.isLoading) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    "Sincronizando datos...",
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // Filtrar colecciones por lote y fecha
+        final collections = provider.batchCollections
+            .where((c) =>
+                c.batchId == batchId &&
+                DateFormat('yyyy-MM-dd').format(c.date) ==
+                    DateFormat('yyyy-MM-dd').format(date))
+            .toList();
+
+        // Ordenar por hora (ascendente: del más viejo al más nuevo)
+        collections.sort((a, b) => a.date.compareTo(b.date));
+
+        if (collections.isEmpty) return const SizedBox.shrink();
+
+        final totalUnits =
+            collections.fold(0, (sum, c) => sum + c.quantity);
+        final totalCartons = totalUnits ~/ 30;
+        final leftovers = totalUnits % 30;
+
+        return Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: Colors.indigo.shade100),
+          ),
+          color: Colors.indigo.shade50.withOpacity(0.3),
+          margin: const EdgeInsets.only(top: 16),
+          child: ExpansionTile(
+            shape: const Border(), // Quita la línea de expansión por defecto
+            leading: CircleAvatar(
+              backgroundColor: Colors.indigo.shade100,
+              child: const Icon(Icons.egg, color: Colors.indigo, size: 20),
+            ),
+            title: const Text(
+              "Resumen de Recolección",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: Colors.indigo,
+              ),
+            ),
+            subtitle: Text(
+              "$totalCartons cartones y $leftovers huevos hoy",
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+            children: [
+              const Divider(height: 1),
+              ...collections.map((item) {
+                final c = item.quantity ~/ 30;
+                final u = item.quantity % 30;
+                final timeStr = DateFormat('hh:mm a').format(item.date);
+                
+                return ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.history, size: 16, color: Colors.grey),
+                  title: Text(
+                    "$c cartones y $u huevos",
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  subtitle: Text("Hora: $timeStr"),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                    onPressed: () => _confirmDelete(context, provider, item),
+                  ),
+                );
+              }),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, ProductionProvider provider, BatchCollectionModel item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Eliminar registro?'),
+        content: const Text('Esta acción quitará estos huevos del total recolectado en este lote.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final dateStr = DateFormat('yyyy-MM-dd').format(date);
+      final success = await provider.deleteBatchCollection(item.id!, date: dateStr);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(success ? 'Registro eliminado' : 'Error al eliminar')),
+        );
+      }
     }
   }
 }

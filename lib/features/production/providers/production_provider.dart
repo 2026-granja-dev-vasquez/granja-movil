@@ -4,6 +4,9 @@ import '../models/production_model.dart';
 import '../models/inventory_model.dart';
 import '../services/production_service.dart';
 
+enum StatRange { week, month, comparative }
+enum StatType { batch, production }
+
 class ProductionProvider with ChangeNotifier {
   final ProductionService _service = ProductionService();
   
@@ -27,6 +30,53 @@ class ProductionProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
+  // Filtros de estadísticas
+  StatRange _selectedStatRange = StatRange.week;
+  StatType _selectedStatType = StatType.production;
+  
+  // Fechas específicas para comparativa
+  DateTime _compareDate1 = DateTime.now();
+  DateTime _compareDate2 = DateTime(DateTime.now().year, DateTime.now().month - 1, 1);
+
+  StatRange get selectedStatRange => _selectedStatRange;
+  StatType get selectedStatType => _selectedStatType;
+  DateTime get compareDate1 => _compareDate1;
+  DateTime get compareDate2 => _compareDate2;
+
+  void setCompareDates(DateTime d1, DateTime d2) {
+    _compareDate1 = d1;
+    _compareDate2 = d2;
+    _updateChartData();
+  }
+
+  void setStatRange(StatRange range) {
+    _selectedStatRange = range;
+    _updateChartData();
+  }
+
+  void setStatType(StatType type) {
+    _selectedStatType = type;
+    notifyListeners();
+  }
+
+  void _updateChartData() async {
+    final now = DateTime.now();
+    if (_selectedStatRange == StatRange.week) {
+      await fetchSummaryReport(now.subtract(const Duration(days: 7)), now);
+    } else if (_selectedStatRange == StatRange.month) {
+      await fetchSummaryReport(DateTime(now.year, now.month, 1), now);
+    } else if (_selectedStatRange == StatRange.comparative) {
+      // Cargamos el rango que cubra ambos meses para tener los datos en memoria
+      final start = _compareDate1.isBefore(_compareDate2) ? _compareDate1 : _compareDate2;
+      final end = _compareDate1.isAfter(_compareDate2) ? _compareDate1 : _compareDate2;
+      
+      // Asegurar que cubrimos el mes completo del "end"
+      final lastDayOfEnd = DateTime(end.year, end.month + 1, 0);
+      await fetchSummaryReport(DateTime(start.year, start.month, 1), lastDayOfEnd);
+    }
+  }
+
+
   List<BatchCollectionModel> get batchCollections => _batchCollections;
   List<ProductionModel> get sortedProductions => _sortedProductions;
   List<DailySummaryReport> get dailyReports => _dailyReports;
@@ -37,6 +87,125 @@ class ProductionProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   int get pendingFromYesterday => _pendingFromYesterday;
+
+  // Datos para Gráficas (Adaptativo con Desglose)
+  List<Map<String, dynamic>> get adaptiveChartData {
+    final source = _selectedStatType == StatType.batch ? _batchSummaries : _dailyReports;
+    final sorted = List<dynamic>.from(source)..sort((a, b) => a.date.compareTo(b.date));
+
+    if (_selectedStatRange == StatRange.month) {
+      return _getWeeklyGroupedData(sorted);
+    }
+    
+    // Vista diaria con desglose
+    return sorted.map((day) {
+      Map<String, int> breakdown = {};
+      int total = 0;
+
+      if (day is DailyBatchSummary) {
+        for (var item in day.report) {
+          breakdown[item.batchName] = item.cartons;
+          total += item.cartons;
+        }
+      } else if (day is DailySummaryReport) {
+        for (var item in day.report) {
+          breakdown[item.productSize] = item.cartons;
+          total += item.cartons;
+        }
+      }
+
+      return {
+        'date': day.date,
+        'total': total,
+        'breakdown': breakdown,
+      };
+    }).toList();
+  }
+
+  // Identificar todas las categorías presentes en el periodo actual
+  List<String> get activeCategories {
+    final Set<String> categories = {};
+    for (var day in adaptiveChartData) {
+      final breakdown = day['breakdown'] as Map<String, int>;
+      categories.addAll(breakdown.keys);
+    }
+    return categories.toList()..sort();
+  }
+
+  List<Map<String, dynamic>> _getWeeklyGroupedData(List<dynamic> sorted) {
+    Map<int, Map<String, dynamic>> grouped = {};
+    
+    for (var day in sorted) {
+      final weekNum = (day.date.day / 7).ceil();
+      final month = day.date.month;
+      final key = month * 10 + weekNum;
+
+      Map<String, int> breakdown = {};
+      int total = 0;
+
+      if (day is DailyBatchSummary) {
+        for (var item in day.report) {
+          breakdown[item.batchName] = item.cartons;
+          total += item.cartons;
+        }
+      } else if (day is DailySummaryReport) {
+        for (var item in day.report) {
+          breakdown[item.productSize] = item.cartons;
+          total += item.cartons;
+        }
+      }
+
+      if (!grouped.containsKey(key)) {
+        grouped[key] = {
+          'label': "Sem. $weekNum",
+          'total': 0,
+          'breakdown': <String, int>{},
+          'date': day.date,
+        };
+      }
+      
+      grouped[key]!['total'] += total;
+      final currentBreakdown = grouped[key]!['breakdown'] as Map<String, int>;
+      breakdown.forEach((category, value) {
+        currentBreakdown[category] = (currentBreakdown[category] ?? 0) + value;
+      });
+    }
+    
+    return grouped.values.toList();
+  }
+
+  // Comparativa de Meses Seleccionados
+  Map<String, dynamic> get customMonthlyComparison {
+    int total1 = 0;
+    int total2 = 0;
+
+    final source = _selectedStatType == StatType.batch ? _batchSummaries : _dailyReports;
+
+    for (var day in source) {
+      int cartons = 0;
+      DateTime date;
+      if (day is DailyBatchSummary) {
+        cartons = day.report.fold(0, (sum, item) => sum + item.cartons);
+        date = day.date;
+      } else if (day is DailySummaryReport) {
+        cartons = day.report.fold(0, (sum, item) => sum + item.cartons);
+        date = day.date;
+      } else continue;
+
+      if (date.month == _compareDate1.month && date.year == _compareDate1.year) {
+        total1 += cartons;
+      } else if (date.month == _compareDate2.month && date.year == _compareDate2.year) {
+        total2 += cartons;
+      }
+    }
+
+    return {
+      'total1': total1,
+      'total2': total2,
+      'month1': DateFormat('MMMM', 'es').format(_compareDate1),
+      'month2': DateFormat('MMMM', 'es').format(_compareDate2),
+    };
+  }
   
   set pendingFromYesterday(int value) {
     _pendingFromYesterday = value;
@@ -58,24 +227,29 @@ class ProductionProvider with ChangeNotifier {
     try {
       final String targetDate = date ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
       
-      // 1. Balance del día y saldo anterior
-      _dailyBatchCollections = await _service.getBatchCollections(date: targetDate);
-      _dailySortedProductions = await _service.getSortedProductions(date: targetDate);
-      _pendingFromYesterday = await _service.getPendingBalance(targetDate);
-
-      // 2. Historial con filtros
       final threeDaysAgo = DateFormat('yyyy-MM-dd').format(DateTime.now().subtract(const Duration(days: 3)));
       final sevenDaysAgo = DateFormat('yyyy-MM-dd').format(DateTime.now().subtract(const Duration(days: 7)));
-      
-      _batchCollections = await _service.getBatchCollections(startDate: threeDaysAgo);
-      _sortedProductions = await _service.getSortedProductions(startDate: sevenDaysAgo);
 
-      // 3. Reporte de Producción: ÚLTIMOS 3 DÍAS por defecto para comparativa
-      _dailyReports = await _service.getInventorySummary(startDate: threeDaysAgo, endDate: targetDate);
-      _batchSummaries = await _service.getBatchSummary(startDate: threeDaysAgo, endDate: targetDate);
-      
-      // 4. Inventario Actual Neto
-      _inventoryStatus = await _service.getInventoryStatus();
+      // Carga en paralelo para mejorar el rendimiento (Fácil y rápido)
+      final results = await Future.wait([
+        _service.getBatchCollections(date: targetDate),
+        _service.getSortedProductions(date: targetDate),
+        _service.getPendingBalance(targetDate),
+        _service.getBatchCollections(startDate: threeDaysAgo),
+        _service.getSortedProductions(startDate: sevenDaysAgo),
+        _service.getInventorySummary(startDate: threeDaysAgo, endDate: targetDate),
+        _service.getBatchSummary(startDate: threeDaysAgo, endDate: targetDate),
+        _service.getInventoryStatus(),
+      ]);
+
+      _dailyBatchCollections = results[0] as List<BatchCollectionModel>;
+      _dailySortedProductions = results[1] as List<ProductionModel>;
+      _pendingFromYesterday = results[2] as int;
+      _batchCollections = results[3] as List<BatchCollectionModel>;
+      _sortedProductions = results[4] as List<ProductionModel>;
+      _dailyReports = results[5] as List<DailySummaryReport>;
+      _batchSummaries = results[6] as List<DailyBatchSummary>;
+      _inventoryStatus = results[7] as List<InventoryModel>;
       
     } catch (e) {
       _errorMessage = e.toString();
@@ -95,11 +269,10 @@ class ProductionProvider with ChangeNotifier {
       
       _dailyReports = await _service.getInventorySummary(startDate: startStr, endDate: endStr);
       _batchSummaries = await _service.getBatchSummary(startDate: startStr, endDate: endStr);
-      _inventoryStatus = await _service.getInventoryStatus();
-      
-      // Sincronizar otros listados
-      _batchCollections = await _service.getBatchCollections(startDate: startStr);
-      _sortedProductions = await _service.getSortedProductions(startDate: startStr);
+    _inventoryStatus = await _service.getInventoryStatus();
+    
+    _batchCollections = await _service.getBatchCollections(startDate: startStr);
+    _sortedProductions = await _service.getSortedProductions(startDate: startStr);
       
     } catch (e) {
       _errorMessage = e.toString();
@@ -119,11 +292,15 @@ class ProductionProvider with ChangeNotifier {
       _batchSummaries = await _service.getBatchSummary(date: dateStr);
       _inventoryStatus = await _service.getInventoryStatus();
       
+      _dailyReports = await _service.getInventorySummary(date: dateStr);
+      _batchSummaries = await _service.getBatchSummary(date: dateStr);
+      _inventoryStatus = await _service.getInventoryStatus();
+      
       _batchCollections = await _service.getBatchCollections(date: dateStr);
       _sortedProductions = await _service.getSortedProductions(date: dateStr);
       
-      _dailyBatchCollections = _batchCollections;
-      _dailySortedProductions = _sortedProductions;
+      _dailyBatchCollections = List<BatchCollectionModel>.from(_batchCollections);
+      _dailySortedProductions = List<ProductionModel>.from(_sortedProductions);
 
     } catch (e) {
       _errorMessage = e.toString();
@@ -160,6 +337,22 @@ class ProductionProvider with ChangeNotifier {
       for (var model in models) {
         await _service.createSortedProduction(model);
       }
+      await fetchDailyData(date: date);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> deleteBatchCollection(int id, {String? date}) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _service.deleteBatchCollection(id);
       await fetchDailyData(date: date);
       return true;
     } catch (e) {

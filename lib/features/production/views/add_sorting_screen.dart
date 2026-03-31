@@ -15,12 +15,28 @@ class AddSortingScreen extends StatefulWidget {
 class _AddSortingScreenState extends State<AddSortingScreen> {
   final _formKey = GlobalKey<FormState>();
   int? _selectedSizeId;
+  final TextEditingController _cartonsController = TextEditingController(text: '0');
+  final TextEditingController _unitsController = TextEditingController(text: '0');
   int _cartons = 0;
   int _units = 0;
   int _globalDamaged = 0;
   DateTime _selectedDate = DateTime.now();
   bool _showBrokenEggs = false;
   bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _cartonsController.dispose();
+    _unitsController.dispose();
+    super.dispose();
+  }
+
+  void _addCartons(int count) {
+    setState(() {
+      _cartons += count;
+      _cartonsController.text = _cartons.toString();
+    });
+  }
 
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
@@ -153,6 +169,43 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                   ],
                 ),
               ),
+              if (productionProvider.pendingFromYesterday > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.amber.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.history, color: Colors.amber, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "HUEVOS PENDIENTES DE AYER",
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.brown,
+                                ),
+                              ),
+                              Text(
+                                "${productionProvider.pendingFromYesterday ~/ 30} cartones y ${productionProvider.pendingFromYesterday % 30} huevos que no se clasificaron anteriormente.",
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               const SizedBox(height: 16),
               const SizedBox(height: 24),
               InkWell(
@@ -318,6 +371,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                 children: [
                   Expanded(
                     child: TextFormField(
+                      controller: _cartonsController,
                       decoration: const InputDecoration(
                         labelText: 'Cartones',
                         helperText: 'De 30 huevos',
@@ -329,6 +383,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: TextFormField(
+                      controller: _unitsController,
                       decoration: const InputDecoration(
                         labelText: 'Sueltos',
                         helperText: 'Unidades',
@@ -337,6 +392,22 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                       onChanged: (val) => _units = int.tryParse(val) ?? 0,
                     ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Carga Rápida (Cartones):",
+                style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _quickAddButton("+1", 1),
+                  _quickAddButton("+5", 5),
+                  _quickAddButton("+10", 10),
+                  _quickAddButton("+30", 30),
+                  _quickAddButton("Limpiar", 0, isReset: true),
                 ],
               ),
 
@@ -556,5 +627,33 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
         ),
       );
     }
+  }
+
+  Widget _quickAddButton(String label, int value, {bool isReset = false}) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: OutlinedButton(
+          onPressed: () {
+            if (isReset) {
+              setState(() {
+                _cartons = 0;
+                _cartonsController.text = '0';
+                _units = 0;
+                _unitsController.text = '0';
+              });
+            } else {
+              _addCartons(value);
+            }
+          },
+          style: OutlinedButton.styleFrom(
+            padding: EdgeInsets.zero,
+            side: BorderSide(color: isReset ? Colors.red.shade200 : Colors.green.shade200),
+            foregroundColor: isReset ? Colors.red : Colors.green,
+          ),
+          child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        ),
+      ),
+    );
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../models/customer_model.dart';
+
 import '../providers/customer_provider.dart';
 import 'add_customer_screen.dart';
 import 'sale_list_screen.dart';
