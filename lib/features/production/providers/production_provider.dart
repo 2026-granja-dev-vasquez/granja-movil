@@ -83,6 +83,7 @@ class ProductionProvider with ChangeNotifier {
   List<DailyBatchSummary> get batchSummaries => _batchSummaries;
   List<InventoryModel> get inventoryStatus => _inventoryStatus;
   List<ProductionModel> get dailySortedProductions => _dailySortedProductions;
+  List<BatchCollectionModel> get dailyBatchCollections => _dailyBatchCollections;
   
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;

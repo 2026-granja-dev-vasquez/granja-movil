@@ -113,7 +113,7 @@ class ProductionService {
       body: jsonEncode(model.toJson()),
     );
 
-    if (response.statusCode != 201) throw Exception('Error al registrar recolecta');
+    if (response.statusCode != 201 && response.statusCode != 200) throw Exception('Error al registrar recolecta');
   }
 
   Future<void> deleteBatchCollection(int id) async {
@@ -161,7 +161,7 @@ class ProductionService {
       body: jsonEncode(model.toJson()),
     );
 
-    if (response.statusCode != 201) throw Exception('Error al clasificar producción');
+    if (response.statusCode != 201 && response.statusCode != 200) throw Exception('Error al clasificar producción');
   }
 
   Future<void> deleteSortedProduction(int id) async {

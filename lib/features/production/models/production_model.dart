@@ -6,6 +6,7 @@ class BatchCollectionModel {
   final int batchId;
   final int quantity;
   final DateTime date;
+  final String? type; // 'collection' o 'adjustment'
   final String? batchName;
 
   BatchCollectionModel({
@@ -13,6 +14,7 @@ class BatchCollectionModel {
     required this.batchId,
     required this.quantity,
     required this.date,
+    this.type = 'collection',
     this.batchName,
   });
 
@@ -22,6 +24,7 @@ class BatchCollectionModel {
       batchId: json['batch_id'],
       quantity: json['quantity'],
       date: DateTime.parse(json['date']),
+      type: json['type'] ?? 'collection',
       batchName: json['batch']?['name'],
     );
   }
@@ -31,6 +34,7 @@ class BatchCollectionModel {
       'batch_id': batchId,
       'quantity': quantity,
       'date': date.toIso8601String(),
+      'type': type,
     };
   }
 }
