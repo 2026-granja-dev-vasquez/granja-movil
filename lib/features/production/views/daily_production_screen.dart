@@ -195,7 +195,7 @@ class DailyProductionComparisonTab extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: () => provider.fetchDailyData(),
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         itemCount:
             provider.dailyReports.length + 1, // +1 para el Header de Stock
         itemBuilder: (context, index) {

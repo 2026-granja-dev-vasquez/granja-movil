@@ -90,6 +90,13 @@ class MainApp extends StatelessWidget {
           iconTheme: IconThemeData(color: Colors.indigo),
         ),
       ),
+      builder: (context, child) {
+        return SafeArea(
+          top: false,
+          bottom: true,
+          child: child!,
+        );
+      },
       home: Consumer<AuthProvider>(
         builder: (context, auth, _) {
           if (auth.isLoading) {
@@ -384,135 +391,131 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
       drawer: const AppDrawer(),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Welcome Header
-            Text(
-              "¡Hola, Bienvenido ${user?.name ?? 'Carlos'}!",
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.indigo,
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Welcome Header
+              Text(
+                "¡Hola, Bienvenido ${user?.name ?? 'Carlos'}!",
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.indigo,
+                ),
               ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              "¿Listo para un nuevo día de trabajo?",
-              style: TextStyle(fontSize: 14, color: Colors.black54),
-            ),
-            const SizedBox(height: 32),
-
-            // Sección: Accesos Rápidos (Daily Drivers)
-            const Text(
-              "ACCESOS RÁPIDOS",
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-                letterSpacing: 1.2,
+              const SizedBox(height: 6),
+              const Text(
+                "¿Listo para un nuevo día de trabajo?",
+                style: TextStyle(fontSize: 14, color: Colors.black54),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 32),
 
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.1,
-              children: [
-                _QuickActionCard(
-                  title: 'Producción Diaria',
-                  icon: Icons.egg_outlined,
-                  color: Colors.green,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const DailyProductionScreen(),
-                    ),
-                  ),
+              // Sección: Accesos Rápidos
+              const Text(
+                "ACCESOS RÁPIDOS",
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                  letterSpacing: 1.2,
                 ),
-                _QuickActionCard(
-                  title: 'Nueva Venta',
-                  icon: Icons.shopping_cart_outlined,
-                  color: Colors.blueAccent,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const AddSaleScreen()),
-                  ),
-                ),
-                _QuickActionCard(
-                  title: 'Historial de Ventas',
-                  icon: Icons.history_edu_outlined,
-                  color: Colors.teal,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SaleListScreen()),
-                  ),
-                ),
-                _QuickActionCard(
-                  title: 'Pedidos',
-                  icon: Icons.local_shipping_outlined,
-                  color: Colors.indigoAccent,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const OrdersPendingScreen()),
-                  ),
-                ),
-                _QuickActionCard(
-                  title: 'Stock en Existencia',
-                  icon: Icons.inventory_2_outlined,
-                  color: Colors.orange.shade800,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ProductStockScreen(),
-                    ),
-                  ),
-                ),
-                if (isAdmin)
+              ),
+              const SizedBox(height: 16),
+
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1.1,
+                children: [
                   _QuickActionCard(
-                    title: 'Caja',
-                    icon: Icons.account_balance_wallet_outlined,
-                    color: Colors.brown,
+                    title: 'Producción Diaria',
+                    icon: Icons.egg_outlined,
+                    color: Colors.green,
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const CashBoxScreen()),
+                      MaterialPageRoute(builder: (_) => const DailyProductionScreen()),
                     ),
                   ),
-              ],
-            ),
-
-            const SizedBox(height: 32),
-            // Mensaje Inspirador / Footer
-            Center(
-              child: Opacity(
-                opacity: 0.5,
-                child: Column(
-                  children: [
-                    Image.network(
-                      'https://cdn-icons-png.flaticon.com/512/1151/1151608.png',
-                      height: 48,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.wb_sunny_outlined, size: 40),
+                  _QuickActionCard(
+                    title: 'Nueva Venta',
+                    icon: Icons.shopping_cart_outlined,
+                    color: Colors.blueAccent,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AddSaleScreen()),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      "El éxito depende del esfuerzo diario.",
-                      style: TextStyle(
-                        fontStyle: FontStyle.italic,
-                        fontSize: 12,
+                  ),
+                  _QuickActionCard(
+                    title: 'Historial de Ventas',
+                    icon: Icons.history_edu_outlined,
+                    color: Colors.teal,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SaleListScreen()),
+                    ),
+                  ),
+                  _QuickActionCard(
+                    title: 'Pedidos',
+                    icon: Icons.local_shipping_outlined,
+                    color: Colors.indigoAccent,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const OrdersPendingScreen()),
+                    ),
+                  ),
+                  _QuickActionCard(
+                    title: 'Stock en Existencia',
+                    icon: Icons.inventory_2_outlined,
+                    color: Colors.orange.shade800,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ProductStockScreen()),
+                    ),
+                  ),
+                  if (isAdmin)
+                    _QuickActionCard(
+                      title: 'Caja',
+                      icon: Icons.account_balance_wallet_outlined,
+                      color: Colors.brown,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const CashBoxScreen()),
                       ),
                     ),
-                  ],
+                ],
+              ),
+
+              const SizedBox(height: 32),
+              // Footer
+              Center(
+                child: Opacity(
+                  opacity: 0.5,
+                  child: Column(
+                    children: [
+                      Image.network(
+                        'https://cdn-icons-png.flaticon.com/512/1151/1151608.png',
+                        height: 48,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(Icons.wb_sunny_outlined, size: 40),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        "El éxito depende del esfuerzo diario.",
+                        style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -727,13 +730,16 @@ class AppDrawer extends StatelessWidget {
           ),
 
           const Divider(),
-          _DrawerItem(
-            icon: Icons.logout,
-            label: 'Cerrar Sesión',
-            color: Colors.red,
-            onTap: () => authProvider.logout(),
+          SafeArea(
+            top: false,
+            child: _DrawerItem(
+              icon: Icons.logout,
+              label: 'Cerrar Sesión',
+              color: Colors.red,
+              onTap: () => authProvider.logout(),
+            ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
         ],
       ),
     );
