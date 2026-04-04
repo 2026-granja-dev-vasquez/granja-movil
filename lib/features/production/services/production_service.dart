@@ -195,6 +195,78 @@ class ProductionService {
     throw Exception('Error al cargar saldo pendiente');
   }
 
+  /// Resets the historical running balance so that `pending_from_yesterday`
+  /// on [date] equals [targetPending].  Returns the adjustment quantity applied.
+  Future<int> resetBalance({required String date, required int targetPending}) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('${ApiConstants.baseUrl}/productions/reset-balance'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({'date': date, 'target_pending': targetPending}),
+    );
+
+    if (response.statusCode == 201) {
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      return data['adjustment_applied'] ?? 0;
+    }
+    throw Exception('Error al reiniciar balance');
+  }
+
+  // --- TABLA DE HUEVOS EN MESA ---
+  Future<List<TableEggModel>> getTableEggs({required String date}) async {
+    final token = await _getToken();
+    final url = Uri.parse('${ApiConstants.baseUrl}/table-eggs').replace(queryParameters: {'date': date});
+    final response = await http.get(url, headers: {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    });
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((e) => TableEggModel.fromJson(e)).toList();
+    }
+    throw Exception('Error al cargar huevos en mesa');
+  }
+
+  Future<TableEggModel> saveTableEgg(TableEggModel model) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('${ApiConstants.baseUrl}/table-eggs'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode(model.toJson()),
+    );
+    if (response.statusCode == 201) {
+      final data = jsonDecode(response.body);
+      return TableEggModel.fromJson(data['data']);
+    }
+    throw Exception('Error al guardar huevo en mesa');
+  }
+
+  Future<void> deleteTableEgg(int id) async {
+    final token = await _getToken();
+    final response = await http.delete(
+      Uri.parse('${ApiConstants.baseUrl}/table-eggs/$id'),
+      headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
+    );
+    if (response.statusCode != 200) throw Exception('Error al eliminar huevo en mesa');
+  }
+
+  Future<void> deleteTableEggsByDate(String date) async {
+    final token = await _getToken();
+    final response = await http.delete(
+      Uri.parse('${ApiConstants.baseUrl}/table-eggs/bulk').replace(queryParameters: {'date': date}),
+      headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
+    );
+    if (response.statusCode != 200) throw Exception('Error al limpiar huevos en mesa');
+  }
+
   Future<List<DailySummaryReport>> getInventorySummary({String? date, String? startDate, String? endDate}) async {
     final token = await _getToken();
     final url = Uri.parse('${ApiConstants.baseUrl}/productions/summary').replace(queryParameters: {

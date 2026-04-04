@@ -27,6 +27,10 @@ class ProductionProvider with ChangeNotifier {
   List<ProductionModel> _dailySortedProductions = [];
   int _pendingFromYesterday = 0;
 
+  // PASO 0: Huevos en mesa de ayer
+  List<TableEggModel> _tableEggs = [];
+  List<TableEggModel> get tableEggs => _tableEggs;
+
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -241,16 +245,18 @@ class ProductionProvider with ChangeNotifier {
         _service.getInventorySummary(startDate: threeDaysAgo, endDate: targetDate),
         _service.getBatchSummary(startDate: threeDaysAgo, endDate: targetDate),
         _service.getInventoryStatus(),
+        _service.getTableEggs(date: targetDate),   // <-- huevos en mesa
       ]);
 
-      _dailyBatchCollections = results[0] as List<BatchCollectionModel>;
+      _dailyBatchCollections  = results[0] as List<BatchCollectionModel>;
       _dailySortedProductions = results[1] as List<ProductionModel>;
-      _pendingFromYesterday = results[2] as int;
-      _batchCollections = results[3] as List<BatchCollectionModel>;
+      _pendingFromYesterday   = results[2] as int;
+      _batchCollections  = results[3] as List<BatchCollectionModel>;
       _sortedProductions = results[4] as List<ProductionModel>;
-      _dailyReports = results[5] as List<DailySummaryReport>;
-      _batchSummaries = results[6] as List<DailyBatchSummary>;
-      _inventoryStatus = results[7] as List<InventoryModel>;
+      _dailyReports      = results[5] as List<DailySummaryReport>;
+      _batchSummaries    = results[6] as List<DailyBatchSummary>;
+      _inventoryStatus   = results[7] as List<InventoryModel>;
+      _tableEggs         = results[8] as List<TableEggModel>;
       
     } catch (e) {
       _errorMessage = e.toString();
@@ -371,6 +377,79 @@ class ProductionProvider with ChangeNotifier {
     try {
       await _service.deleteSortedProduction(id);
       await fetchDailyData(date: date);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Resets the running historical balance so that pending_from_yesterday
+  /// on [date] equals [targetPending]. Refreshes all daily data afterwards.
+  Future<bool> resetBalance({required String date, required int targetPending}) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _service.resetBalance(date: date, targetPending: targetPending);
+      await fetchDailyData(date: date);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // --- Huevos en Mesa ---
+
+  int tableEggsForSize(int sizeId) =>
+      _tableEggs.where((e) => e.productSizeId == sizeId).fold(0, (s, e) => s + e.quantity);
+
+  Future<bool> saveTableEgg(TableEggModel model) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final saved = await _service.saveTableEgg(model);
+      // replace or add in local list
+      _tableEggs.removeWhere((e) => e.productSizeId == saved.productSizeId);
+      _tableEggs.add(saved);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> deleteTableEgg(int id) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _service.deleteTableEgg(id);
+      _tableEggs.removeWhere((e) => e.id == id);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> clearTableEggs(String date) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _service.deleteTableEggsByDate(date);
+      _tableEggs.clear();
       return true;
     } catch (e) {
       _errorMessage = e.toString();

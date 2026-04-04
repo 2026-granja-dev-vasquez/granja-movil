@@ -3,15 +3,15 @@
 // PASO 1: Recolecta bruta por Lote
 class BatchCollectionModel {
   final int? id;
-  final int batchId;
+  final int? batchId;
   final int quantity;
   final DateTime date;
-  final String? type; // 'collection' o 'adjustment'
+  final String? type; // 'collection', 'adjustment' o 'reset'
   final String? batchName;
 
   BatchCollectionModel({
     this.id,
-    required this.batchId,
+    this.batchId,
     required this.quantity,
     required this.date,
     this.type = 'collection',
@@ -22,20 +22,21 @@ class BatchCollectionModel {
     return BatchCollectionModel(
       id: json['id'],
       batchId: json['batch_id'],
-      quantity: json['quantity'],
+      quantity: json['quantity'] ?? 0,
       date: DateTime.parse(json['date']),
       type: json['type'] ?? 'collection',
-      batchName: json['batch']?['name'],
+      batchName: json['batch']?['name'] ?? json['batch_name'],
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'batch_id': batchId,
+    final map = <String, dynamic>{
       'quantity': quantity,
       'date': date.toIso8601String(),
       'type': type,
     };
+    if (batchId != null) map['batch_id'] = batchId;
+    return map;
   }
 }
 
@@ -113,3 +114,40 @@ class ConsolidationModel {
     );
   }
 }
+
+// PASO 0: Huevos en Mesa de Ayer (remanentes físicos en área de trabajo)
+class TableEggModel {
+  final int? id;
+  final DateTime date;
+  final int productSizeId;
+  final int quantity;
+  final String? productSizeName;
+
+  TableEggModel({
+    this.id,
+    required this.date,
+    required this.productSizeId,
+    required this.quantity,
+    this.productSizeName,
+  });
+
+  int get cartons => quantity ~/ 30;
+  int get units   => quantity % 30;
+
+  factory TableEggModel.fromJson(Map<String, dynamic> json) {
+    return TableEggModel(
+      id: json['id'],
+      date: DateTime.parse(json['date']),
+      productSizeId: json['product_size_id'],
+      quantity: json['quantity'],
+      productSizeName: json['product_size']?['name'],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'date': date.toIso8601String().substring(0, 10),
+    'product_size_id': productSizeId,
+    'quantity': quantity,
+  };
+}
+

@@ -25,16 +25,11 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
     _fetchData();
   }
 
-  void _saveWithContext(BuildContext ctx, int? sizeId, int useful, {int damaged = 0}) async {
-    await _saveClassification(sizeId, useful, damaged: damaged);
-    if (mounted && Navigator.canPop(ctx)) Navigator.pop(ctx);
-  }
-
   void _fetchData() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await context.read<ProductionProvider>().fetchDailyData(
-        date: DateFormat('yyyy-MM-dd').format(_selectedDate),
-      );
+            date: DateFormat('yyyy-MM-dd').format(_selectedDate),
+          );
       if (mounted) {
         final totalDamaged = context.read<ProductionProvider>().totalDailyDamaged;
         setState(() {
@@ -43,6 +38,473 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
         });
       }
     });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // BOTTOM SHEET: Ingresar/Editar huevos en mesa de ayer
+  // ─────────────────────────────────────────────────────────────────────────
+  void _openTableEggBottomSheet(ProductionProvider provider, ProductProvider productProvider) {
+    final sizes = productProvider.sizes;
+    if (sizes.isEmpty) return;
+
+    // Pre-fill from existing table eggs
+    final Map<int, TextEditingController> cartCtrl = {};
+    final Map<int, TextEditingController> unitCtrl = {};
+    for (final s in sizes) {
+      final existing = provider.tableEggs.where((e) => e.productSizeId == s.id).firstOrNull;
+      cartCtrl[s.id] = TextEditingController(text: (existing?.cartons ?? 0).toString());
+      unitCtrl[s.id] = TextEditingController(text: (existing?.units ?? 0).toString());
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 24,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Handle bar
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.table_restaurant, color: Colors.amber.shade700, size: 22),
+                      ),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Huevos de ayer en la mesa",
+                                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.blueGrey)),
+                            Text("Ingresa por tamaño cuántos hay sobre tu área de trabajo",
+                                style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  // Per-size inputs
+                  ...sizes.map((size) {
+                    final carts = int.tryParse(cartCtrl[size.id]!.text) ?? 0;
+                    final units = int.tryParse(unitCtrl[size.id]!.text) ?? 0;
+                    final total = carts * 30 + units;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: total > 0 ? Colors.amber.shade50 : Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: total > 0 ? Colors.amber.shade200 : Colors.grey.shade200,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.egg_outlined, size: 14, color: total > 0 ? Colors.amber.shade700 : Colors.grey),
+                              const SizedBox(width: 6),
+                              Text(size.name.toUpperCase(),
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: total > 0 ? Colors.amber.shade800 : Colors.blueGrey)),
+                              const Spacer(),
+                              if (total > 0)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.shade200,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text("$total huevos",
+                                      style: TextStyle(
+                                          fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade900)),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text("CARTONES (30u)",
+                                        style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.blueGrey.shade400)),
+                                    const SizedBox(height: 6),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Colors.grey.shade200)),
+                                      child: Row(
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(Icons.remove, size: 16),
+                                            onPressed: () {
+                                              final v = (int.tryParse(cartCtrl[size.id]!.text) ?? 0);
+                                              if (v > 0) {
+                                                cartCtrl[size.id]!.text = (v - 1).toString();
+                                                setSheet(() {});
+                                              }
+                                            },
+                                            color: Colors.blueGrey,
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                          ),
+                                          Expanded(
+                                            child: TextField(
+                                              controller: cartCtrl[size.id],
+                                              keyboardType: TextInputType.number,
+                                              textAlign: TextAlign.center,
+                                              onChanged: (_) => setSheet(() {}),
+                                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                                              decoration: const InputDecoration(
+                                                  border: InputBorder.none, contentPadding: EdgeInsets.zero),
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.add, size: 16),
+                                            onPressed: () {
+                                              final v = (int.tryParse(cartCtrl[size.id]!.text) ?? 0);
+                                              cartCtrl[size.id]!.text = (v + 1).toString();
+                                              setSheet(() {});
+                                            },
+                                            color: Colors.blueGrey,
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text("HUEVOS SUELTOS",
+                                        style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.blueGrey.shade400)),
+                                    const SizedBox(height: 6),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Colors.grey.shade200)),
+                                      child: Row(
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(Icons.remove, size: 16),
+                                            onPressed: () {
+                                              final v = (int.tryParse(unitCtrl[size.id]!.text) ?? 0);
+                                              if (v > 0) {
+                                                unitCtrl[size.id]!.text = (v - 1).toString();
+                                                setSheet(() {});
+                                              }
+                                            },
+                                            color: Colors.blueGrey,
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                          ),
+                                          Expanded(
+                                            child: TextField(
+                                              controller: unitCtrl[size.id],
+                                              keyboardType: TextInputType.number,
+                                              textAlign: TextAlign.center,
+                                              onChanged: (_) => setSheet(() {}),
+                                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                                              decoration: const InputDecoration(
+                                                  border: InputBorder.none, contentPadding: EdgeInsets.zero),
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.add, size: 16),
+                                            onPressed: () {
+                                              final v = (int.tryParse(unitCtrl[size.id]!.text) ?? 0);
+                                              unitCtrl[size.id]!.text = (v + 1).toString();
+                                              setSheet(() {});
+                                            },
+                                            color: Colors.blueGrey,
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.grey,
+                            side: BorderSide(color: Colors.grey.shade300),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: const Text("CANCELAR", style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.amber.shade600,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          onPressed: () async {
+                            final prov = context.read<ProductionProvider>();
+                            for (final size in sizes) {
+                              final qty = (int.tryParse(cartCtrl[size.id]!.text) ?? 0) * 30 +
+                                  (int.tryParse(unitCtrl[size.id]!.text) ?? 0);
+                              if (qty > 0) {
+                                await prov.saveTableEgg(TableEggModel(
+                                  date: _selectedDate,
+                                  productSizeId: size.id,
+                                  quantity: qty,
+                                ));
+                              } else {
+                                // If set to 0, delete existing entry if any
+                                final existing = prov.tableEggs.where((e) => e.productSizeId == size.id).firstOrNull;
+                                if (existing?.id != null) await prov.deleteTableEgg(existing!.id!);
+                              }
+                            }
+                            if (context.mounted) Navigator.pop(ctx);
+                          },
+                          child: const Text("GUARDAR", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // DIALOG: Add classification entry for a size (Simple additive logic)
+  // ─────────────────────────────────────────────────────────────────────────
+  void _openAddEntryDialog(ProductSizeModel size, ProductionProvider provider, int tableQty) {
+    final cartCtrl = TextEditingController(text: '0');
+    final unitCtrl = TextEditingController(text: '0');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          int netToday = (int.tryParse(cartCtrl.text) ?? 0) * 30 + (int.tryParse(unitCtrl.text) ?? 0);
+
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.add_circle, color: Colors.green, size: 24),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("Registrar Limpieza",
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.blueGrey)),
+                          Text(size.name.toLowerCase(),
+                              style: const TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (tableQty > 0)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange.shade100),
+                      ),
+                      child: Text(
+                        "Información: De ayer quedaron ${tableQty ~/ 30} cart. + ${tableQty % 30} sueltos.",
+                        style: TextStyle(fontSize: 11, color: Colors.brown.shade700, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  const Divider(height: 28),
+                  const Text("ESTOY AGREGANDO (CARTONES)",
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                  const SizedBox(height: 8),
+                  _dialogField(cartCtrl, Icons.grid_view_rounded, (v) => setDialogState(() {})),
+                  const SizedBox(height: 16),
+                  const Text("ESTOY AGREGANDO (SUELTOS)",
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                  const SizedBox(height: 8),
+                  _dialogField(unitCtrl, Icons.egg_outlined, (v) => setDialogState(() {})),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.green.shade200)),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("POR AGREGAR:",
+                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, fontSize: 12)),
+                        Text("$netToday HUEVOS",
+                            style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.green, fontSize: 18)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text("CANCELAR", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                          elevation: 0,
+                        ),
+                        onPressed: netToday > 0 && !_isSaving ? () => _saveWithContext(ctx, size.id, netToday) : null,
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Text("GUARDAR", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteEntry(ProductionModel entry, ProductionProvider provider) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text("¿Eliminar entrada?", style: TextStyle(fontWeight: FontWeight.w900, color: Colors.blueGrey)),
+        content: Text("Se eliminará este registro de ${entry.usefulQuantity} huevos y se revertirá el stock."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("CANCELAR", style: TextStyle(color: Colors.grey))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("ELIMINAR"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && entry.id != null) {
+      setState(() => _isSaving = true);
+      await provider.deleteSortedProduction(entry.id!, date: DateFormat('yyyy-MM-dd').format(_selectedDate));
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _saveClassification(int? sizeId, int useful, {int damaged = 0}) async {
+    setState(() => _isSaving = true);
+
+    final model = ProductionModel(
+      productSizeId: sizeId,
+      usefulQuantity: useful,
+      damagedQuantity: damaged,
+      date: _selectedDate,
+    );
+
+    final success = await context.read<ProductionProvider>().addSortedProduction(model);
+
+    if (mounted) {
+      setState(() => _isSaving = false);
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Guardado exitosamente')));
+        _fetchData();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${context.read<ProductionProvider>().errorMessage}')));
+      }
+    }
+  }
+
+  void _saveWithContext(BuildContext ctx, int? sizeId, int useful, {int damaged = 0}) async {
+    await _saveClassification(sizeId, useful, damaged: damaged);
+    if (mounted && Navigator.canPop(ctx)) Navigator.pop(ctx);
   }
 
   Future<void> _selectDate() async {
@@ -65,76 +527,25 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final productProvider = context.watch<ProductProvider>();
-    final prodProvider = context.watch<ProductionProvider>();
-    
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        title: const Text('Clasificación y Limpieza'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0.5,
-        actions: [
-          IconButton(icon: const Icon(Icons.history), onPressed: () => _fetchData()),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildBalanceSummary(prodProvider),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildDateSelector(),
-                  const SizedBox(height: 24),
-                  
-                  const Text(
-                    "TAMAÑOS DE PRODUCTO",
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: Colors.blueGrey),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  if (productProvider.isLoading)
-                    const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
-                  else
-                    ...productProvider.sizes.map((size) => _buildSizeCard(size, prodProvider)),
-                  
-                  const SizedBox(height: 24),
-                  _buildBrokenEggsFooter(),
-                  const SizedBox(height: 100),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
+  // ─────────────────────────────────────────────────────────────────────────
+  // BALANCE SUMMARY CARD
+  // ─────────────────────────────────────────────────────────────────────────
   Widget _buildBalanceSummary(ProductionProvider provider) {
-    final int todayRaw = provider.dailyBatchCollections
-        .where((c) => c.type != 'adjustment')
-        .fold(0, (sum, c) => sum + c.quantity);
-    
+    final int todayRaw = provider.dailyBatchCollections.where((c) => c.type != 'adjustment' && c.type != 'reset').fold(0, (sum, c) => sum + c.quantity);
+
     final int yesterdayPending = provider.pendingFromYesterday;
-    final int adjustments = provider.dailyBatchCollections
-        .where((c) => c.type == 'adjustment')
-        .fold(0, (sum, c) => sum + c.quantity);
-    
+    final int adjustments = provider.dailyBatchCollections.where((c) => c.type == 'adjustment').fold(0, (sum, c) => sum + c.quantity);
+
     final int totalAvailable = todayRaw + yesterdayPending + adjustments;
     final int alreadySorted = provider.totalSortedCount;
     final int remaining = totalAvailable - alreadySorted;
+    final bool hasDeficit = yesterdayPending < 0;
 
     return Container(
       margin: const EdgeInsets.all(15),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B), // Dark blue-grey (Style from screenshot)
+        color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 8))],
       ),
@@ -144,9 +555,11 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Icon(Icons.inventory_2, color: Colors.blueAccent, size: 20),
-              Text("RESUMEN DE STOCK:", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueAccent.shade100, letterSpacing: 1.5)),
+              Text("RESUMEN DE STOCK:",
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueAccent.shade100, letterSpacing: 1.5)),
               const Spacer(),
-              Text(DateFormat("MMM d").format(_selectedDate).toUpperCase(), style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+              Text(DateFormat("MMM d").format(_selectedDate).toUpperCase(),
+                  style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 20),
@@ -154,10 +567,38 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _statHeader("DISPONIBLE HOY", todayRaw.toString(), Colors.blue.shade300),
-              _statHeader("AJUSTE/AYER", (yesterdayPending + adjustments).toString(), Colors.orange.shade300, onAdjust: () => _openMasterAdjustmentDialog(provider, yesterdayPending + adjustments)),
+              _statHeader(
+                "HISTÓRICO/AYER",
+                yesterdayPending.toString(),
+                hasDeficit ? Colors.redAccent.shade100 : Colors.orange.shade300,
+                onReset: () => _openResetDialog(provider),
+              ),
               _statHeader("POR CLASIFICAR", remaining.toString(), remaining < 0 ? Colors.redAccent : Colors.greenAccent),
             ],
           ),
+          if (hasDeficit || remaining < 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      hasDeficit ? "Déficit detected ($yesterdayPending). Usa REINICIAR para cuadrar a cero." : "Balance negativo. Verifica la recolecta de hoy.",
+                      style: const TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 15),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -175,96 +616,150 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
     );
   }
 
-  Widget _statHeader(String label, String value, Color color, {VoidCallback? onAdjust}) {
-    return Column(
-      children: [
-        Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey.shade400, letterSpacing: 0.5)),
-        const SizedBox(height: 6),
-        Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: color)),
-        if (onAdjust != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Material(
-              color: Colors.orange.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-              child: InkWell(
-                onTap: onAdjust,
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(border: Border.all(color: Colors.orange.withOpacity(0.5)), borderRadius: BorderRadius.circular(20)),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.edit, size: 8, color: Colors.orange),
-                      SizedBox(width: 4),
-                      Text("MODIFICAR", style: TextStyle(fontSize: 7, fontWeight: FontWeight.w900, color: Colors.orange)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
+  // ─────────────────────────────────────────────────────────────────────────
+  // TARJETA PERMANENTE: Huevos en mesa de ayer
+  // Siempre visible — sin huevos: pregunta / con huevos: muestra y permite editar
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildTableEggsCard(ProductionProvider provider, ProductProvider productProvider) {
+    final hasEggs = provider.tableEggs.isNotEmpty;
+    final totalUnits = provider.tableEggs.fold(0, (s, e) => s + e.quantity);
+    final totalCartons = totalUnits ~/ 30;
+    final totalLoose = totalUnits % 30;
 
-  void _openMasterAdjustmentDialog(ProductionProvider provider, int currentTotal) {
-    final TextEditingController adjCtrl = TextEditingController(text: currentTotal.toString());
-    
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Ajustar Saldo Inicial", style: TextStyle(fontWeight: FontWeight.w900, color: Colors.blueGrey)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text("¿Cuántos huevos hay REALMENTE pendientes de ayer?", style: TextStyle(fontSize: 13, color: Colors.grey)),
-            const SizedBox(height: 20),
-            TextField(
-              controller: adjCtrl,
-              autofocus: true,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.edit_note, color: Colors.orange),
-                hintText: "Eje: 200",
-                filled: true,
-                fillColor: Colors.grey.shade100,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              ),
-            ),
-          ],
+    return Container(
+      decoration: BoxDecoration(
+        color: hasEggs ? Colors.amber.shade50 : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: hasEggs ? Colors.amber.shade300 : Colors.blueGrey.shade100,
+          width: hasEggs ? 1.5 : 1,
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("CANCELAR", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            onPressed: () async {
-                final int realPending = int.tryParse(adjCtrl.text) ?? 0;
-                final int neededAdjustment = realPending - provider.pendingFromYesterday;
-                
-                final adjModel = BatchCollectionModel(
-                  batchId: 0,
-                  quantity: neededAdjustment,
-                  date: _selectedDate,
-                  type: 'adjustment'
-                );
-                
-                setState(() => _isSaving = true);
-                await provider.addBatchCollection(adjModel);
-                if (mounted) {
-                  setState(() => _isSaving = false);
-                  Navigator.pop(ctx);
-                }
-            },
-            child: const Text("GUARDAR AJUSTE", style: TextStyle(fontWeight: FontWeight.bold)),
+        boxShadow: [
+          BoxShadow(
+            color: hasEggs ? Colors.amber.withOpacity(0.08) : Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
+      child: hasEggs
+          // ── Vista con huevos registrados (Desplegable) ──
+          ? Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
+                childrenPadding: const EdgeInsets.symmetric(horizontal: 16),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade100,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.table_restaurant, color: Colors.amber.shade700, size: 18),
+                ),
+                title: Text("HUEVOS DE AYER EN MESA",
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber.shade800, letterSpacing: 1)),
+                subtitle: Text("$totalCartons cart. + $totalLoose sueltos ($totalUnits huevos)",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.amber.shade900)),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      onPressed: () => _confirmDeleteTableEggs(provider),
+                      icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    const SizedBox(width: 12),
+                    IconButton(
+                      onPressed: () => _openTableEggBottomSheet(provider, productProvider),
+                      icon: const Icon(Icons.edit, size: 18, color: Colors.amber),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.expand_more, color: Colors.amber),
+                  ],
+                ),
+                children: [
+                  const Divider(height: 1, color: Colors.amber),
+                  const SizedBox(height: 12),
+                  ...provider.tableEggs.map((egg) {
+                    final name = egg.productSizeName ?? 'Tamaño ${egg.productSizeId}';
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Icon(Icons.egg_outlined, size: 12, color: Colors.amber.shade600),
+                          const SizedBox(width: 8),
+                          Text("$name: ", style: TextStyle(fontSize: 13, color: Colors.brown.shade600)),
+                          const Spacer(),
+                          Text("${egg.cartons} cart. + ${egg.units} sueltos",
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.amber.shade800)),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: const Text(
+                      "💡 Al clasificar hoy, ingresa SOLO los huevos nuevos (sin contar los de arriba).",
+                      style: TextStyle(fontSize: 10, color: Colors.brown),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          // ── Vista sin huevos registrados ──
+          : Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.blueGrey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.table_restaurant, color: Colors.blueGrey.shade300, size: 20),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Huevos de ayer en tu área", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.blueGrey.shade700)),
+                        Text("¿Quedaron huevos de ayer sobre la mesa?", style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () => _openTableEggBottomSheet(provider, productProvider),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber.shade600,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text("SÍ", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Date selector
+  // ─────────────────────────────────────────────────────────────────────────
   Widget _buildDateSelector() {
     return InkWell(
       onTap: _selectDate,
@@ -291,176 +786,129 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
     );
   }
 
-  Widget _buildSizeCard(ProductSizeModel size, ProductionProvider provider) {
-    // Obtener lo que ya está guardado para este tamaño hoy
-    final int alreadySorted = provider.dailySortedProductions
-        .where((p) => p.productSizeId == size.id)
-        .fold(0, (sum, p) => sum + p.usefulQuantity);
-    
-    final int cartons = alreadySorted ~/ 30;
-    final int units = alreadySorted % 30;
+  // ─────────────────────────────────────────────────────────────────────────
+  // SECTION: Per-size with list of entries
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildSizeSection(ProductSizeModel size, ProductionProvider provider) {
+    final entries = provider.dailySortedProductions.where((p) => p.productSizeId == size.id).toList();
+
+    final int totalSorted = entries.fold(0, (s, p) => s + p.usefulQuantity);
+    final int tableQty = provider.tableEggsForSize(size.id);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))],
-        border: Border.all(color: alreadySorted > 0 ? Colors.green.shade200 : Colors.grey.shade100),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+        border: Border.all(color: totalSorted > 0 ? Colors.green.shade200 : Colors.grey.shade100),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => _openAdjustmentDialog(size, alreadySorted, provider),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12)),
-                  child: Icon(Icons.egg_outlined, color: alreadySorted > 0 ? Colors.green : Colors.grey.shade400),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(10)),
+            child: Icon(Icons.egg_outlined, color: totalSorted > 0 ? Colors.green : Colors.grey.shade400),
+          ),
+          title: Text(size.name.toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueGrey.shade600)),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "${(totalSorted + tableQty) ~/ 30} CARTONES Y ${(totalSorted + tableQty) % 30} HUEVOS",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: (totalSorted + tableQty) > 0 ? Colors.green.shade700 : Colors.grey.shade400,
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(size.name.toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueGrey.shade600)),
-                      const SizedBox(height: 4),
-                      Text(
-                        alreadySorted > 0 ? "$cartons CARTONES Y $units HUEVOS" : "0 CARTONES Y 0 HUEVOS",
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: alreadySorted > 0 ? Colors.green.shade700 : Colors.grey.shade400),
-                      ),
-                      Text("TOTAL: $alreadySorted HUEVOS", style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
-                    ],
-                  ),
-                ),
-                // Botón + para agregar rápido o abrir diálogo
-                Container(
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  if (tableQty > 0)
+                    _pill(
+                      "Ayer: ${tableQty ~/ 30} cart. + ${tableQty % 30} suelt.",
+                      Icons.history,
+                      Colors.amber.shade700,
+                      Colors.amber.shade50,
+                    ),
+                  if (totalSorted > 0)
+                    _pill(
+                      "Hoy: ${totalSorted ~/ 30} cart. + ${totalSorted % 30} suelt.",
+                      Icons.auto_awesome,
+                      Colors.green.shade700,
+                      Colors.green.shade50,
+                    ),
+                ],
+              ),
+            ],
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onTap: () => _openAddEntryDialog(size, provider, tableQty),
+                child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle),
                   child: const Icon(Icons.add, color: Colors.green, size: 20),
                 ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _openAdjustmentDialog(ProductSizeModel size, int alreadySorted, ProductionProvider provider) {
-    final TextEditingController cartCtrl = TextEditingController(text: '${alreadySorted ~/ 30}');
-    final TextEditingController unitCtrl = TextEditingController(text: '${alreadySorted % 30}');
-    
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) {
-          int getDialogTotal() {
-            int c = int.tryParse(cartCtrl.text) ?? 0;
-            int u = int.tryParse(unitCtrl.text) ?? 0;
-            return (c * 30) + u;
-          }
-
-          final int totalToSave = getDialogTotal();
-
-          return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.add_circle, color: Colors.green, size: 24),
-                      const SizedBox(width: 12),
-                      const Text("Registrar Ingreso", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.blueGrey)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text("Producto: ${size.name.toLowerCase()}", style: const TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold)),
-                  const Divider(height: 32),
-                  
-                  const Text("CANTIDAD EN CARTONES (30u)", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                  const SizedBox(height: 8),
-                  _dialogField(cartCtrl, Icons.grid_view_rounded, (v) => setDialogState(() {})),
-                  
-                  const SizedBox(height: 20),
-                  
-                  const Text("HUEVOS SUELTOS (UNIDADES)", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                  const SizedBox(height: 8),
-                  _dialogField(unitCtrl, Icons.egg_outlined, (v) => setDialogState(() {})),
-
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("TOTAL FINAL:", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, fontSize: 13)),
-                        Text("$totalToSave HUEVOS", style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.green, fontSize: 18)),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text("CANCELAR", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                      ),
-                      const SizedBox(width: 12),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                          elevation: 0,
-                        ),
-                        onPressed: _isSaving ? null : () => _saveWithContext(ctx, size.id, totalToSave),
-                        child: _isSaving 
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : const Text("GUARDAR", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
-                      ),
-                    ],
-                  ),
-                ],
               ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _dialogField(TextEditingController ctrl, IconData icon, Function(String) onChanged) {
-    return Container(
-      decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
-      child: TextField(
-        controller: ctrl,
-        keyboardType: TextInputType.number,
-        onChanged: onChanged,
-        decoration: InputDecoration(
-          prefixIcon: Icon(icon, size: 20, color: Colors.blueGrey),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.all(16),
+              if (entries.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                const Icon(Icons.expand_more, color: Colors.grey),
+              ],
+            ],
+          ),
+          children: [
+            if (entries.isNotEmpty) ...[
+              const Divider(height: 1, indent: 16, endIndent: 16),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: entries.length,
+                separatorBuilder: (_, __) => const Divider(height: 1, indent: 50),
+                itemBuilder: (context, i) {
+                  final entry = entries[i];
+                  final ec = entry.usefulQuantity ~/ 30;
+                  final eu = entry.usefulQuantity % 30;
+                  return ListTile(
+                    dense: true,
+                    leading: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text("${i + 1}", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green.shade700)),
+                      ),
+                    ),
+                    title: Text("$ec cartones y $eu huevos", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    subtitle: Text("${entry.usefulQuantity} huevos", style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                      onPressed: () => _confirmDeleteEntry(entry, provider),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ],
         ),
       ),
     );
   }
 
-
+  // ─────────────────────────────────────────────────────────────────────────
+  // Broken eggs footer
+  // ─────────────────────────────────────────────────────────────────────────
   Widget _buildBrokenEggsFooter() {
     final int savedTotal = context.read<ProductionProvider>().totalDailyDamaged;
 
@@ -487,20 +935,16 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text("HUEVOS QUEBRADOS / DAÑADOS", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, fontSize: 11)),
-                  if (savedTotal > 0)
-                    Text("REGISTRADO HOY: $savedTotal HUEVOS", style: const TextStyle(fontSize: 9, color: Colors.red, fontWeight: FontWeight.bold)),
+                  if (savedTotal > 0) Text("REGISTRADO HOY: $savedTotal HUEVOS", style: const TextStyle(fontSize: 9, color: Colors.red, fontWeight: FontWeight.bold)),
                 ],
               ),
               const Spacer(),
-              _isSaving 
+              _isSaving
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.red, strokeWidth: 2))
-                  : TextButton(
-                      onPressed: () => _saveClassification(null, 0, damaged: _sessionDamaged), 
-                      child: const Text("GUARDAR", style: TextStyle(color: Colors.red, fontWeight: FontWeight.w900, fontSize: 13))
-                    )
+                  : TextButton(onPressed: () => _saveClassification(null, 0, damaged: _sessionDamaged), child: const Text("GUARDAR", style: TextStyle(color: Colors.red, fontWeight: FontWeight.w900, fontSize: 13)))
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           Container(
             decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
             child: TextField(
@@ -523,26 +967,217 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
     );
   }
 
-  Future<void> _saveClassification(int? sizeId, int useful, {int damaged = 0}) async {
-    setState(() => _isSaving = true);
-    
-    final model = ProductionModel(
-      productSizeId: sizeId,
-      usefulQuantity: useful,
-      damagedQuantity: damaged,
-      date: _selectedDate,
+  // ─────────────────────────────────────────────────────────────────────────
+  // MODIFICAR / REINICIAR dialogs
+  // ─────────────────────────────────────────────────────────────────────────
+  void _openResetDialog(ProductionProvider provider) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+              child: const Icon(Icons.refresh, color: Colors.redAccent, size: 20),
+            ),
+            const SizedBox(width: 12),
+            const Text("Reiniciar Balance", style: TextStyle(fontWeight: FontWeight.w900, color: Colors.blueGrey, fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.orange.shade200)),
+              child: const Text(
+                "¿Estás seguro? Esto pondrá en CERO el saldo histórico para corregir errores y empezar el día limpio.",
+                style: TextStyle(fontSize: 12, color: Colors.brown),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("CANCELAR", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            onPressed: () async {
+              final String dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+              setState(() => _isSaving = true);
+              // reset balance to 0
+              final ok = await provider.resetBalance(date: dateStr, targetPending: 0);
+              if (mounted) {
+                setState(() => _isSaving = false);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(ok ? '✅ Saldo histórico reiniciado a 0' : '❌ Error al reiniciar'),
+                  backgroundColor: ok ? Colors.green : Colors.red,
+                ));
+              }
+            },
+            child: const Text("SÍ, REINICIAR", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
+  }
 
-    final success = await context.read<ProductionProvider>().addSortedProduction(model);
+  Widget _statHeader(String label, String value, Color color, {VoidCallback? onReset}) {
+    return Column(
+      children: [
+        Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey.shade400, letterSpacing: 0.5)),
+        const SizedBox(height: 6),
+        Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: color)),
+        if (onReset != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: _miniButton("REINICIAR", Icons.refresh, Colors.redAccent, onReset),
+          ),
+      ],
+    );
+  }
 
-    if (mounted) {
-      setState(() => _isSaving = false);
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guardado exitosamente')));
-        _fetchData(); // Refrescar stock
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${context.read<ProductionProvider>().errorMessage}')));
-      }
-    }
+  Widget _pill(String label, IconData icon, Color textColor, Color bgColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: textColor.withOpacity(0.1)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 10, color: textColor),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: textColor),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniButton(String label, IconData icon, Color color, VoidCallback onTap) {
+    return Material(
+      color: color.withOpacity(0.15),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(border: Border.all(color: color.withOpacity(0.4)), borderRadius: BorderRadius.circular(20)),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 8, color: color),
+              const SizedBox(width: 3),
+              Text(label, style: TextStyle(fontSize: 7, fontWeight: FontWeight.w900, color: color)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+
+  Widget _dialogField(TextEditingController ctrl, IconData icon, Function(String) onChanged) {
+    return Container(
+      decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
+      child: TextField(
+        controller: ctrl,
+        keyboardType: TextInputType.number,
+        onChanged: onChanged,
+        decoration: InputDecoration(
+          prefixIcon: Icon(icon, size: 20, color: Colors.blueGrey),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.all(16),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteTableEggs(ProductionProvider provider) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Limpiar Mesa", style: TextStyle(fontWeight: FontWeight.w900, color: Colors.blueGrey)),
+        content: const Text("¿Deseas eliminar todos los huevos registrados de ayer en la mesa para esta fecha?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("CANCELAR", style: TextStyle(color: Colors.grey))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            onPressed: () async {
+              setState(() => _isSaving = true);
+              final String dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+              await provider.clearTableEggs(dateStr);
+              if (mounted) {
+                setState(() => _isSaving = false);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Huevos en mesa eliminados")));
+              }
+            },
+            child: const Text("SÍ, BORRAR TODO", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final productProvider = context.watch<ProductProvider>();
+    final prodProvider = context.watch<ProductionProvider>();
+
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50,
+      appBar: AppBar(
+        title: const Text('Clasificación y Limpieza'),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0.5,
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: () => _fetchData()),
+        ],
+      ),
+      body: Column(
+        children: [
+          _buildBalanceSummary(prodProvider),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildDateSelector(),
+                  const SizedBox(height: 12),
+                  _buildTableEggsCard(prodProvider, productProvider),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "CLASIFICACIÓN POR TAMAÑO",
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: Colors.blueGrey),
+                  ),
+                  const SizedBox(height: 12),
+                  if (productProvider.isLoading)
+                    const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
+                  else
+                    ...productProvider.sizes.map((size) => _buildSizeSection(size, prodProvider)),
+                  const SizedBox(height: 20),
+                  _buildBrokenEggsFooter(),
+                  const SizedBox(height: 100),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
