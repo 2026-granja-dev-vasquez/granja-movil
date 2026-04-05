@@ -362,131 +362,135 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
   void _openAddEntryDialog(ProductSizeModel size, ProductionProvider provider, int tableQty, {ProductionModel? editEntry}) {
     final cartCtrl = TextEditingController(text: editEntry != null ? (editEntry.usefulQuantity ~/ 30).toString() : '0');
     final unitCtrl = TextEditingController(text: editEntry != null ? (editEntry.usefulQuantity % 30).toString() : '0');
+    bool isSavingDialog = false;
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
           int netToday = (int.tryParse(cartCtrl.text) ?? 0) * 30 + (int.tryParse(unitCtrl.text) ?? 0);
 
           return Dialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Icon(editEntry != null ? Icons.edit_note : Icons.add_circle, 
-                           color: editEntry != null ? Colors.amber : Colors.green, size: 24),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(editEntry != null ? "Modificar Registro" : "Registrar Limpieza",
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.blueGrey)),
-                          Text(size.name.toLowerCase(),
-                              style: const TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  if (tableQty > 0 && editEntry == null)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange.shade100),
-                      ),
-                      child: Text(
-                        "Información: De ayer quedaron ${tableQty ~/ 30} cart. + ${tableQty % 30} sueltos.",
-                        style: TextStyle(fontSize: 11, color: Colors.brown.shade700, fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  const Divider(height: 28),
-                  const Text("ESTOY AGREGANDO (CARTONES)",
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                  const SizedBox(height: 8),
-                  _dialogField(cartCtrl, Icons.grid_view_rounded, (v) => setDialogState(() {})),
-                  const SizedBox(height: 16),
-                  const Text("ESTOY AGREGANDO (SUELTOS)",
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                  const SizedBox(height: 8),
-                  _dialogField(unitCtrl, Icons.egg_outlined, (v) => setDialogState(() {})),
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                        color: editEntry != null ? Colors.amber.shade50 : Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: editEntry != null ? Colors.amber.shade200 : Colors.green.shade200)),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
                       children: [
-                        Text(editEntry != null ? "NUEVO TOTAL:" : "POR AGREGAR:",
-                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, fontSize: 12)),
-                        Text("$netToday HUEVOS",
-                            style: TextStyle(fontWeight: FontWeight.w900, color: editEntry != null ? Colors.amber.shade700 : Colors.green, fontSize: 18)),
+                        Icon(editEntry != null ? Icons.edit_note : Icons.add_circle, 
+                             color: editEntry != null ? Colors.amber : Colors.green, size: 24),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(editEntry != null ? "Modificar Registro" : "Registrar Limpieza",
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.blueGrey)),
+                            Text(size.name.toLowerCase(),
+                                style: const TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text("CANCELAR", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                      ),
-                      const SizedBox(width: 12),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: editEntry != null ? Colors.amber : Colors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                          elevation: 0,
+                    const SizedBox(height: 16),
+                    if (tableQty > 0 && editEntry == null)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange.shade100),
                         ),
-                        onPressed: netToday > 0 && !_isSaving 
-                          ? () async {
-                              setState(() => _isSaving = true);
-                              bool success;
-                              if (editEntry != null) {
-                                success = await provider.updateSortedProduction(ProductionModel(
-                                  id: editEntry.id,
-                                  productSizeId: size.id,
-                                  usefulQuantity: netToday,
-                                  damagedQuantity: editEntry.damagedQuantity,
-                                  date: editEntry.date,
-                                  origin: editEntry.origin,
-                                ), date: DateFormat('yyyy-MM-dd').format(_selectedDate));
-                              } else {
-                                success = await provider.addSortedProduction(ProductionModel(
-                                  productSizeId: size.id,
-                                  usefulQuantity: netToday,
-                                  damagedQuantity: 0,
-                                  date: _selectedDate,
-                                ));
-                              }
-                              if (mounted) {
-                                setState(() => _isSaving = false);
-                                if (success) Navigator.pop(ctx);
-                              }
-                            }
-                          : null,
-                        child: _isSaving
-                            ? const SizedBox(
-                                width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : Text(editEntry != null ? "ACTUALIZAR" : "GUARDAR", style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+                        child: Text(
+                          "Información: De ayer quedaron ${tableQty ~/ 30} cart. + ${tableQty % 30} sueltos.",
+                          style: TextStyle(fontSize: 11, color: Colors.brown.shade700, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                    ],
-                  ),
-                ],
+                    const Divider(height: 28),
+                    const Text("ESTOY AGREGANDO (CARTONES)",
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                    const SizedBox(height: 8),
+                    _dialogField(cartCtrl, Icons.grid_view_rounded, (v) => setDialogState(() {})),
+                    const SizedBox(height: 16),
+                    const Text("ESTOY AGREGANDO (SUELTOS)",
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                    const SizedBox(height: 8),
+                    _dialogField(unitCtrl, Icons.egg_outlined, (v) => setDialogState(() {})),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                          color: editEntry != null ? Colors.amber.shade50 : Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: editEntry != null ? Colors.amber.shade200 : Colors.green.shade200)),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(editEntry != null ? "NUEVO TOTAL:" : "POR AGREGAR:",
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, fontSize: 12)),
+                          Text("$netToday HUEVOS",
+                              style: TextStyle(fontWeight: FontWeight.w900, color: editEntry != null ? Colors.amber.shade700 : Colors.green, fontSize: 18)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text("CANCELAR", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: editEntry != null ? Colors.amber : Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                            elevation: 0,
+                          ),
+                          onPressed: netToday > 0 && !isSavingDialog 
+                            ? () async {
+                                setDialogState(() => isSavingDialog = true);
+                                bool success;
+                                if (editEntry != null) {
+                                  success = await provider.updateSortedProduction(ProductionModel(
+                                    id: editEntry.id,
+                                    productSizeId: size.id,
+                                    usefulQuantity: netToday,
+                                    damagedQuantity: editEntry.damagedQuantity,
+                                    date: editEntry.date,
+                                    origin: editEntry.origin,
+                                  ), date: DateFormat('yyyy-MM-dd').format(_selectedDate));
+                                } else {
+                                  success = await provider.addSortedProduction(ProductionModel(
+                                    productSizeId: size.id,
+                                    usefulQuantity: netToday,
+                                    damagedQuantity: 0,
+                                    date: _selectedDate,
+                                  ));
+                                }
+                                if (mounted) {
+                                  setDialogState(() => isSavingDialog = false);
+                                  if (success) Navigator.pop(ctx);
+                                }
+                              }
+                            : null,
+                          child: isSavingDialog
+                              ? const SizedBox(
+                                  width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : Text(editEntry != null ? "ACTUALIZAR" : "GUARDAR", style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           );
