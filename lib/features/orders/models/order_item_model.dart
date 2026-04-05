@@ -25,8 +25,8 @@ class OrderItemModel {
       orderId: json['order_id'] ?? 0,
       productSizeId: json['product_size_id'] ?? 0,
       quantity: json['quantity'] ?? 0,
-      unitPrice: (json['unit_price'] ?? 0).toDouble(),
-      subtotal: (json['subtotal'] ?? 0).toDouble(),
+      unitPrice: double.parse((json['unit_price'] ?? 0).toString()),
+      subtotal: double.parse((json['subtotal'] ?? 0).toString()),
       productSize: json['product_size'] != null 
           ? ProductSizeModel.fromJson(json['product_size']) 
           : null,

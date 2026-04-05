@@ -43,8 +43,8 @@ class OrderModel {
       status: json['status'],
       notes: json['notes'],
       createdAt: DateTime.parse(json['created_at']).toLocal(),
-      totalAmount: (json['total_amount'] ?? 0).toDouble(),
-      paidAmount: (json['paid_amount'] ?? 0).toDouble(),
+      totalAmount: double.parse((json['total_amount'] ?? 0).toString()),
+      paidAmount: double.parse((json['paid_amount'] ?? 0).toString()),
       customer: json['customer'] != null ? CustomerModel.fromJson(json['customer']) : null,
       items: itemsList,
     );

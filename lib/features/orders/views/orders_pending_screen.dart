@@ -134,17 +134,37 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
 
   Widget _buildOrderCard(OrderModel order) {
     final isOverdue = order.isOverdue;
+    
+    // Determine card background and border colors based on status
+    Color cardColor = Colors.grey.shade50;
+    Color borderColor = Colors.grey.shade100;
+    double borderWidth = 1;
+
+    if (isOverdue) {
+      cardColor = Colors.red.shade50.withOpacity(0.5);
+      borderColor = Colors.red.shade300;
+      borderWidth = 1.5;
+    } else if (order.isPaid) {
+      cardColor = Colors.green.shade50;
+      borderColor = Colors.green.shade200;
+      borderWidth = 1.5;
+    } else if (order.isPartiallyPaid) {
+      cardColor = Colors.amber.shade50.withOpacity(0.7);
+      borderColor = Colors.amber.shade300;
+      borderWidth = 1.2;
+    }
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: isOverdue ? Colors.red.shade300 : Colors.grey.shade100,
-          width: isOverdue ? 1.5 : 1,
+          color: borderColor,
+          width: borderWidth,
         ),
       ),
-      color: isOverdue ? Colors.red.shade50.withOpacity(0.3) : Colors.grey.shade50,
+      color: cardColor,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -242,12 +262,16 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          order.isPaid ? 'PAGADO TOTAL' : (order.isPartiallyPaid ? 'PAGO PARCIAL' : 'PENDIENTE'), 
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: order.isPaid ? Colors.green : (order.isPartiallyPaid ? Colors.amber.shade900 : Colors.indigo)),
-                        ),
-                        Text(
-                          'Q${order.paidAmount.toStringAsFixed(2)} / Q${order.totalAmount.toStringAsFixed(2)}',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87),
+                          order.isPaid 
+                            ? 'EL CLIENTE YA PAGÓ TODO (Q${order.totalAmount.toStringAsFixed(2)})' 
+                            : (order.isPartiallyPaid 
+                                ? 'YA ABONÓ Q${order.paidAmount.toStringAsFixed(2)} - PENDIENTE: Q${order.pendingAmount.toStringAsFixed(2)}' 
+                                : 'PENDIENTE DE PAGO: Q${order.totalAmount.toStringAsFixed(2)}'), 
+                          style: TextStyle(
+                            fontSize: 11, 
+                            fontWeight: FontWeight.w900, 
+                            color: order.isPaid ? Colors.green : (order.isPartiallyPaid ? Colors.amber.shade900 : Colors.indigo)
+                          ),
                         ),
                       ],
                     ),
