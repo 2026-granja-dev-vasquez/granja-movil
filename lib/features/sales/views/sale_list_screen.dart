@@ -20,6 +20,8 @@ class _SaleListScreenState extends State<SaleListScreen> {
   DateTime _startDate = DateTime.now().subtract(const Duration(days: 7));
   DateTime _endDate = DateTime.now();
   int? _selectedCustomerId;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
 
   @override
   void initState() {
@@ -29,6 +31,12 @@ class _SaleListScreenState extends State<SaleListScreen> {
       _applyFilters();
       context.read<CustomerProvider>().fetchCustomers();
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _applyFilters() {
@@ -79,9 +87,18 @@ class _SaleListScreenState extends State<SaleListScreen> {
     final DateFormat formatter = DateFormat('dd/MM/yyyy HH:mm');
     final DateFormat dayFormatter = DateFormat('EEEE, d MMMM yyyy', 'es_GT');
 
+    final filteredSales = saleProvider.sales.where((sale) {
+      if (_searchQuery.isEmpty) return true;
+      final q = _searchQuery.toLowerCase();
+      final idStr = sale.id?.toString() ?? "";
+      final notes = sale.notes?.toLowerCase() ?? "";
+      final customerStr = sale.customer?.name.toLowerCase() ?? "consumidor final";
+      return idStr.contains(q) || customerStr.contains(q) || notes.contains(q);
+    }).toList();
+
     // Agrupar por fecha (solo el día)
     final Map<String, List<SaleModel>> groupedSales = {};
-    for (var sale in saleProvider.sales) {
+    for (var sale in filteredSales) {
       final dateStr = DateFormat('yyyy-MM-dd').format(sale.date);
       if (!groupedSales.containsKey(dateStr)) {
         groupedSales[dateStr] = [];
@@ -105,6 +122,26 @@ class _SaleListScreenState extends State<SaleListScreen> {
           // BARRA DE FILTROS
           _buildFilterBar(customerProvider),
 
+          // BUSCADOR TEXTUAL
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Buscar por Venta #, cliente o nota...',
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onChanged: (val) => setState(() => _searchQuery = val),
+            ),
+          ),
+
           // LISTADO DE RESUMEN
           Expanded(
             child: saleProvider.isLoading
@@ -112,7 +149,7 @@ class _SaleListScreenState extends State<SaleListScreen> {
                 : sortedDates.isEmpty
                 ? _buildEmptyState()
                 : ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
                     itemCount: sortedDates.length,
                     itemBuilder: (context, index) {
                       final dateKey = sortedDates[index];
@@ -432,7 +469,7 @@ class _SaleListScreenState extends State<SaleListScreen> {
         color: isPaid ? Colors.green : Colors.orange,
       ),
       title: Text(
-        sale.customer?.name ?? "Consumidor Final",
+        "Venta #${sale.id} - ${sale.customer?.name ?? 'Consumidor Final'}",
         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
       ),
       subtitle: Text(
