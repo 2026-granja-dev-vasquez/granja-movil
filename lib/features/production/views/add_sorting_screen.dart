@@ -308,26 +308,41 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
-                          onPressed: () async {
-                            final prov = context.read<ProductionProvider>();
-                            for (final size in sizes) {
-                              final qty = (int.tryParse(cartCtrl[size.id]!.text) ?? 0) * 30 +
-                                  (int.tryParse(unitCtrl[size.id]!.text) ?? 0);
-                              if (qty > 0) {
-                                await prov.saveTableEgg(TableEggModel(
-                                  date: _selectedDate,
-                                  productSizeId: size.id,
-                                  quantity: qty,
-                                ));
-                              } else {
-                                // If set to 0, delete existing entry if any
-                                final existing = prov.tableEggs.where((e) => e.productSizeId == size.id).firstOrNull;
-                                if (existing?.id != null) await prov.deleteTableEgg(existing!.id!);
-                              }
-                            }
-                            if (context.mounted) Navigator.pop(ctx);
-                          },
-                          child: const Text("GUARDAR", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+                          onPressed: _isSaving
+                              ? null
+                              : () async {
+                                  setSheet(() => _isSaving = true);
+                                  setState(() => _isSaving = true);
+                                  try {
+                                    final prov = context.read<ProductionProvider>();
+                                    for (final size in sizes) {
+                                      final qty = (int.tryParse(cartCtrl[size.id]!.text) ?? 0) * 30 +
+                                          (int.tryParse(unitCtrl[size.id]!.text) ?? 0);
+                                      if (qty > 0) {
+                                        await prov.saveTableEgg(TableEggModel(
+                                          date: _selectedDate,
+                                          productSizeId: size.id,
+                                          quantity: qty,
+                                        ));
+                                      } else {
+                                        final existing = prov.tableEggs.where((e) => e.productSizeId == size.id).firstOrNull;
+                                        if (existing?.id != null) await prov.deleteTableEgg(existing!.id!);
+                                      }
+                                    }
+                                    if (context.mounted) Navigator.pop(ctx);
+                                  } finally {
+                                    if (mounted) {
+                                      setSheet(() => _isSaving = false);
+                                      setState(() => _isSaving = false);
+                                    }
+                                  }
+                                },
+                          child: _isSaving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : const Text("GUARDAR", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
                         ),
                       ),
                     ],
@@ -344,9 +359,9 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
   // ─────────────────────────────────────────────────────────────────────────
   // DIALOG: Add classification entry for a size (Simple additive logic)
   // ─────────────────────────────────────────────────────────────────────────
-  void _openAddEntryDialog(ProductSizeModel size, ProductionProvider provider, int tableQty) {
-    final cartCtrl = TextEditingController(text: '0');
-    final unitCtrl = TextEditingController(text: '0');
+  void _openAddEntryDialog(ProductSizeModel size, ProductionProvider provider, int tableQty, {ProductionModel? editEntry}) {
+    final cartCtrl = TextEditingController(text: editEntry != null ? (editEntry.usefulQuantity ~/ 30).toString() : '0');
+    final unitCtrl = TextEditingController(text: editEntry != null ? (editEntry.usefulQuantity % 30).toString() : '0');
 
     showDialog(
       context: context,
@@ -364,13 +379,14 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.add_circle, color: Colors.green, size: 24),
+                      Icon(editEntry != null ? Icons.edit_note : Icons.add_circle, 
+                           color: editEntry != null ? Colors.amber : Colors.green, size: 24),
                       const SizedBox(width: 12),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("Registrar Limpieza",
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.blueGrey)),
+                          Text(editEntry != null ? "Modificar Registro" : "Registrar Limpieza",
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.blueGrey)),
                           Text(size.name.toLowerCase(),
                               style: const TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold)),
                         ],
@@ -378,7 +394,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  if (tableQty > 0)
+                  if (tableQty > 0 && editEntry == null)
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -406,16 +422,16 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                        color: Colors.green.shade50,
+                        color: editEntry != null ? Colors.amber.shade50 : Colors.green.shade50,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green.shade200)),
+                        border: Border.all(color: editEntry != null ? Colors.amber.shade200 : Colors.green.shade200)),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text("POR AGREGAR:",
-                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, fontSize: 12)),
+                        Text(editEntry != null ? "NUEVO TOTAL:" : "POR AGREGAR:",
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, fontSize: 12)),
                         Text("$netToday HUEVOS",
-                            style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.green, fontSize: 18)),
+                            style: TextStyle(fontWeight: FontWeight.w900, color: editEntry != null ? Colors.amber.shade700 : Colors.green, fontSize: 18)),
                       ],
                     ),
                   ),
@@ -430,17 +446,43 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                       const SizedBox(width: 12),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
+                          backgroundColor: editEntry != null ? Colors.amber : Colors.green,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                           elevation: 0,
                         ),
-                        onPressed: netToday > 0 && !_isSaving ? () => _saveWithContext(ctx, size.id, netToday) : null,
+                        onPressed: netToday > 0 && !_isSaving 
+                          ? () async {
+                              setState(() => _isSaving = true);
+                              bool success;
+                              if (editEntry != null) {
+                                success = await provider.updateSortedProduction(ProductionModel(
+                                  id: editEntry.id,
+                                  productSizeId: size.id,
+                                  usefulQuantity: netToday,
+                                  damagedQuantity: editEntry.damagedQuantity,
+                                  date: editEntry.date,
+                                  origin: editEntry.origin,
+                                ), date: DateFormat('yyyy-MM-dd').format(_selectedDate));
+                              } else {
+                                success = await provider.addSortedProduction(ProductionModel(
+                                  productSizeId: size.id,
+                                  usefulQuantity: netToday,
+                                  damagedQuantity: 0,
+                                  date: _selectedDate,
+                                ));
+                              }
+                              if (mounted) {
+                                setState(() => _isSaving = false);
+                                if (success) Navigator.pop(ctx);
+                              }
+                            }
+                          : null,
                         child: _isSaving
                             ? const SizedBox(
                                 width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : const Text("GUARDAR", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+                            : Text(editEntry != null ? "ACTUALIZAR" : "GUARDAR", style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
                       ),
                     ],
                   ),
@@ -474,8 +516,18 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
 
     if (confirm == true && entry.id != null) {
       setState(() => _isSaving = true);
-      await provider.deleteSortedProduction(entry.id!, date: DateFormat('yyyy-MM-dd').format(_selectedDate));
-      if (mounted) setState(() => _isSaving = false);
+      final success = await provider.deleteSortedProduction(entry.id!, date: DateFormat('yyyy-MM-dd').format(_selectedDate));
+      if (mounted) {
+        setState(() => _isSaving = false);
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Registro eliminado y remanentes restaurados')));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('❌ Error: ${provider.errorMessage}'),
+            backgroundColor: Colors.red,
+          ));
+        }
+      }
     }
   }
 
@@ -502,10 +554,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
     }
   }
 
-  void _saveWithContext(BuildContext ctx, int? sizeId, int useful, {int damaged = 0}) async {
-    await _saveClassification(sizeId, useful, damaged: damaged);
-    if (mounted && Navigator.canPop(ctx)) Navigator.pop(ctx);
-  }
+  // Method _saveWithContext was removed as it is no longer used.
 
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
@@ -531,83 +580,86 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
   // BALANCE SUMMARY CARD
   // ─────────────────────────────────────────────────────────────────────────
   Widget _buildBalanceSummary(ProductionProvider provider) {
-    final int todayRaw = provider.dailyBatchCollections.where((c) => c.type != 'adjustment' && c.type != 'reset').fold(0, (sum, c) => sum + c.quantity);
-
-    final int yesterdayPending = provider.pendingFromYesterday;
-    final int adjustments = provider.dailyBatchCollections.where((c) => c.type == 'adjustment').fold(0, (sum, c) => sum + c.quantity);
-
-    final int totalAvailable = todayRaw + yesterdayPending + adjustments;
-    final int alreadySorted = provider.totalSortedCount;
-    final int remaining = totalAvailable - alreadySorted;
-    final bool hasDeficit = yesterdayPending < 0;
+    final int netHarvest = provider.netTodayHarvest;
+    final int tableRemainingInitial = provider.totalInitialTableRemnants; 
+    
+    final int totalSortedToday = provider.totalSortedCount; 
+    final int remaining = provider.pendingEggs;
+    final bool hasDeficit = provider.pendingFromYesterday < 0;
 
     return Container(
-      margin: const EdgeInsets.all(15),
-      padding: const EdgeInsets.all(20),
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(15, 15, 15, 8),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 8))],
+        color: const Color(0xFF1B2A4E), // Deep Blue Screenshot
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 10, offset: const Offset(0, 5)),
+        ],
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.inventory_2, color: Colors.blueAccent, size: 20),
-              Text("RESUMEN DE STOCK:",
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueAccent.shade100, letterSpacing: 1.5)),
-              const Spacer(),
+              Row(
+                children: [
+                  Icon(Icons.inventory_2, color: Colors.blue.shade200, size: 16),
+                  const SizedBox(width: 8),
+                  Text("RESUMEN DE STOCK:",
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue.shade100, letterSpacing: 1.2)),
+                ],
+              ),
               Text(DateFormat("MMM d").format(_selectedDate).toUpperCase(),
                   style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 25),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _statHeader("DISPONIBLE HOY", todayRaw.toString(), Colors.blue.shade300),
+              _statHeader("DISPONIBLE HOY", netHarvest.toString(), Colors.blue.shade300),
               _statHeader(
                 "HISTÓRICO/AYER",
-                yesterdayPending.toString(),
-                hasDeficit ? Colors.redAccent.shade100 : Colors.orange.shade300,
-                onReset: () => _openResetDialog(provider),
+                tableRemainingInitial.toString(),
+                Colors.orange.shade300,
+                onReset: hasDeficit ? () => _openResetDialog(provider) : null,
               ),
-              _statHeader("POR CLASIFICAR", remaining.toString(), remaining < 0 ? Colors.redAccent : Colors.greenAccent),
+              _statHeader("POR CLASIFICAR", remaining.toString(), remaining < 0 ? Colors.redAccent : Colors.tealAccent),
             ],
           ),
           if (hasDeficit || remaining < 0) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 15),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
               ),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 16),
+                  const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 14),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      hasDeficit ? "Déficit detected ($yesterdayPending). Usa REINICIAR para cuadrar a cero." : "Balance negativo. Verifica la recolecta de hoy.",
-                      style: const TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.w600),
-                    ),
+                  Text(
+                    hasDeficit ? "Déficit detected (${provider.pendingFromYesterday}). Reiniciar." : "Balance negativo.",
+                    style: const TextStyle(fontSize: 9, color: Colors.orangeAccent, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
             ),
           ],
-          const SizedBox(height: 15),
+          const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(15)),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(18)),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("YA CLASIFICADO:", style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey.shade400)),
-                Text("$alreadySorted HUEVOS", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white)),
+                Text("YA CLASIFICADO:", style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.blueGrey.shade300)),
+                Text("$totalSortedToday HUEVOS", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white)),
               ],
             ),
           ),
@@ -621,7 +673,8 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
   // Siempre visible — sin huevos: pregunta / con huevos: muestra y permite editar
   // ─────────────────────────────────────────────────────────────────────────
   Widget _buildTableEggsCard(ProductionProvider provider, ProductProvider productProvider) {
-    final hasEggs = provider.tableEggs.isNotEmpty;
+    // La tarjeta es visible si hay huevos EN mesa O si ya se clasificó algo como remanente hoy
+    final hasEggs = provider.tableEggs.isNotEmpty || provider.sortedRemnantUnits > 0;
     final totalUnits = provider.tableEggs.fold(0, (s, e) => s + e.quantity);
     final totalCartons = totalUnits ~/ 30;
     final totalLoose = totalUnits % 30;
@@ -655,12 +708,12 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                     color: Colors.amber.shade100,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.table_restaurant, color: Colors.amber.shade700, size: 18),
+                  child: Icon(Icons.keyboard_arrow_down, color: Colors.amber.shade700, size: 22),
                 ),
-                title: Text("HUEVOS DE AYER EN MESA",
+                title: Text("HUEVOS DE AYER EN TU ÁREA DE TRABAJO",
                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber.shade800, letterSpacing: 1)),
-                subtitle: Text("$totalCartons cart. + $totalLoose sueltos ($totalUnits huevos)",
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.amber.shade900)),
+                subtitle: Text("Total inicial: ${totalUnits} huevos ($totalCartons cart. + $totalLoose sueltos)",
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.amber.shade900)),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -686,6 +739,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                   const SizedBox(height: 12),
                   ...provider.tableEggs.map((egg) {
                     final name = egg.productSizeName ?? 'Tamaño ${egg.productSizeId}';
+                    final remaining = provider.tableEggsRemainingForSize(egg.productSizeId!);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Row(
@@ -694,7 +748,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                           const SizedBox(width: 8),
                           Text("$name: ", style: TextStyle(fontSize: 13, color: Colors.brown.shade600)),
                           const Spacer(),
-                          Text("${egg.cartons} cart. + ${egg.units} sueltos",
+                          Text("Pte: $remaining de ${egg.quantity}",
                               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.amber.shade800)),
                         ],
                       ),
@@ -734,8 +788,8 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Huevos de ayer en tu área", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.blueGrey.shade700)),
-                        Text("¿Quedaron huevos de ayer sobre la mesa?", style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                        Text("Huevos de ayer en tu área de trabajo", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.blueGrey.shade700)),
+                        Text("agrega aca los huevos que ya estan clasificados pero estan en tu area de trabajo", style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
                       ],
                     ),
                   ),
@@ -793,115 +847,112 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
     final entries = provider.dailySortedProductions.where((p) => p.productSizeId == size.id).toList();
 
     final int totalSorted = entries.fold(0, (s, p) => s + p.usefulQuantity);
-    final int tableQty = provider.tableEggsForSize(size.id);
+    final int tableQty = provider.tableEggsRemainingForSize(size.id);
+
+    final int remnantsProcessed = entries.where((p) => p.origin == 'remnant').fold(0, (s, p) => s + p.usefulQuantity);
+    final int harvestSorted = entries.where((p) => p.origin == 'harvest').fold(0, (s, p) => s + p.usefulQuantity);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
-        border: Border.all(color: totalSorted > 0 ? Colors.green.shade200 : Colors.grey.shade100),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.grey.shade100, width: 1.5),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          leading: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(10)),
-            child: Icon(Icons.egg_outlined, color: totalSorted > 0 ? Colors.green : Colors.grey.shade400),
-          ),
-          title: Text(size.name.toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueGrey.shade600)),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "${(totalSorted + tableQty) ~/ 30} CARTONES Y ${(totalSorted + tableQty) % 30} HUEVOS",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  color: (totalSorted + tableQty) > 0 ? Colors.green.shade700 : Colors.grey.shade400,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: [
-                  if (tableQty > 0)
-                    _pill(
-                      "Ayer: ${tableQty ~/ 30} cart. + ${tableQty % 30} suelt.",
-                      Icons.history,
-                      Colors.amber.shade700,
-                      Colors.amber.shade50,
-                    ),
-                  if (totalSorted > 0)
-                    _pill(
-                      "Hoy: ${totalSorted ~/ 30} cart. + ${totalSorted % 30} suelt.",
-                      Icons.auto_awesome,
-                      Colors.green.shade700,
-                      Colors.green.shade50,
-                    ),
-                ],
-              ),
-            ],
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GestureDetector(
-                onTap: () => _openAddEntryDialog(size, provider, tableQty),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle),
-                  child: const Icon(Icons.add, color: Colors.green, size: 20),
-                ),
-              ),
-              if (entries.isNotEmpty) ...[
-                const SizedBox(width: 8),
-                const Icon(Icons.expand_more, color: Colors.grey),
-              ],
-            ],
-          ),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(color: Colors.green.shade50.withOpacity(0.5), borderRadius: BorderRadius.circular(15)),
+          child: Center(child: Icon(Icons.keyboard_arrow_down, color: Colors.green.shade600, size: 22)),
+        ),
+        title: Text(size.name.toUpperCase(),
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey.shade400, letterSpacing: 1)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (entries.isNotEmpty) ...[
-              const Divider(height: 1, indent: 16, endIndent: 16),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: entries.length,
-                separatorBuilder: (_, __) => const Divider(height: 1, indent: 50),
-                itemBuilder: (context, i) {
-                  final entry = entries[i];
-                  final ec = entry.usefulQuantity ~/ 30;
-                  final eu = entry.usefulQuantity % 30;
-                  return ListTile(
-                    dense: true,
-                    leading: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text("${i + 1}", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green.shade700)),
-                      ),
-                    ),
-                    title: Text("$ec cartones y $eu huevos", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    subtitle: Text("${entry.usefulQuantity} huevos", style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                      onPressed: () => _confirmDeleteEntry(entry, provider),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
+            Text(
+              "${(totalSorted + tableQty) ~/ 30} CARTONES Y ${(totalSorted + tableQty) % 30} HUEVOS",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: (totalSorted + tableQty) > 0 ? Colors.green.shade700 : Colors.grey.shade400),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                if (tableQty > 0 || remnantsProcessed > 0)
+                  _pill(
+                    "Ayer: ${(tableQty + remnantsProcessed) ~/ 30} cart. + ${(tableQty + remnantsProcessed) % 30} suelt.",
+                    Icons.history,
+                    Colors.amber.shade800,
+                    Colors.amber.shade50,
+                  ),
+                if (harvestSorted > 0)
+                  _pill(
+                    "Hoy: ${harvestSorted ~/ 30} cart. + ${harvestSorted % 30} suelt.",
+                    Icons.auto_awesome,
+                    Colors.green.shade700,
+                    Colors.green.shade50,
+                  ),
+              ],
+            ),
           ],
         ),
+        trailing: GestureDetector(
+          onTap: () => _openAddEntryDialog(size, provider, tableQty),
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: Colors.green.shade100.withOpacity(0.5), shape: BoxShape.circle),
+            child: Icon(Icons.add, color: Colors.green.shade700, size: 22),
+          ),
+        ),
+        children: [
+          const Divider(height: 1),
+          if (entries.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Text("No hay clasificaciones registradas para hoy.",
+                  style: TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic)),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: entries.length,
+              separatorBuilder: (_, __) => const Divider(height: 1, indent: 50),
+              itemBuilder: (ctx, i) {
+                final entry = entries[i];
+                final ec = entry.usefulQuantity ~/ 30;
+                final eu = entry.usefulQuantity % 30;
+                return ListTile(
+                  dense: true,
+                  onTap: () => _openAddEntryDialog(size, provider, tableQty, editEntry: entry),
+                  leading: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: entry.origin == 'remnant' ? Colors.orange.shade50 : Colors.green.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Icon(entry.origin == 'remnant' ? Icons.history : Icons.egg, 
+                                 size: 14, color: entry.origin == 'remnant' ? Colors.orange : Colors.green),
+                    ),
+                  ),
+                  title: Text("$ec cartones y $eu huevos", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  subtitle: Text("${entry.origin == 'remnant' ? 'Remanente' : 'Cosecha'} • ${entry.usefulQuantity} huevos", 
+                                 style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                    onPressed: () => _confirmDeleteEntry(entry, provider),
+                  ),
+                );
+              },
+            ),
+          const SizedBox(height: 12),
+        ],
       ),
     );
   }
@@ -1005,21 +1056,25 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            onPressed: () async {
-              final String dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-              setState(() => _isSaving = true);
-              // reset balance to 0
-              final ok = await provider.resetBalance(date: dateStr, targetPending: 0);
-              if (mounted) {
-                setState(() => _isSaving = false);
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(ok ? '✅ Saldo histórico reiniciado a 0' : '❌ Error al reiniciar'),
-                  backgroundColor: ok ? Colors.green : Colors.red,
-                ));
-              }
-            },
-            child: const Text("SÍ, REINICIAR", style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: _isSaving
+                ? null
+                : () async {
+                    final String dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+                    setState(() => _isSaving = true);
+                    final ok = await provider.resetBalance(date: dateStr, targetPending: 0);
+                    if (mounted) {
+                      setState(() => _isSaving = false);
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(ok ? '✅ Saldo histórico reiniciado a 0' : '❌ Error al reiniciar'),
+                        backgroundColor: ok ? Colors.green : Colors.red,
+                      ));
+                    }
+                  },
+            child: _isSaving
+                ? const SizedBox(
+                    width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : const Text("SÍ, REINICIAR", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),

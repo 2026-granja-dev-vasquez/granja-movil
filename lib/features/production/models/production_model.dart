@@ -48,6 +48,7 @@ class ProductionModel {
   final int damagedQuantity;
   final DateTime date;
   final String? productSizeName;
+  final String origin; // 'harvest' o 'remnant'
 
   ProductionModel({
     this.id,
@@ -56,6 +57,7 @@ class ProductionModel {
     this.damagedQuantity = 0,
     required this.date,
     this.productSizeName,
+    this.origin = 'harvest',
   });
 
   // Cálculos de cartones (Base 30)
@@ -69,19 +71,22 @@ class ProductionModel {
     return ProductionModel(
       id: json['id'],
       productSizeId: json['product_size_id'],
-      usefulQuantity: json['useful_quantity'],
+      usefulQuantity: json['useful_quantity'] ?? 0,
       damagedQuantity: json['damaged_quantity'] ?? 0,
       date: DateTime.parse(json['date']),
       productSizeName: json['product_size']?['name'],
+      origin: json['origin'] ?? 'harvest',
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'product_size_id': productSizeId,
       'useful_quantity': usefulQuantity,
       'damaged_quantity': damagedQuantity,
       'date': date.toIso8601String(),
+      'origin': origin,
     };
   }
 }

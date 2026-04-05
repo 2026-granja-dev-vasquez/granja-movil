@@ -164,6 +164,21 @@ class ProductionService {
     if (response.statusCode != 201 && response.statusCode != 200) throw Exception('Error al clasificar producción');
   }
 
+  Future<void> updateSortedProduction(ProductionModel model) async {
+    final token = await _getToken();
+    final response = await http.put(
+      Uri.parse('${ApiConstants.baseUrl}/productions/${model.id}'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode(model.toJson()),
+    );
+
+    if (response.statusCode != 200) throw Exception('Error al actualizar registro');
+  }
+
   Future<void> deleteSortedProduction(int id) async {
     final token = await _getToken();
     final response = await http.delete(

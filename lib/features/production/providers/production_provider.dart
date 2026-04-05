@@ -92,6 +92,7 @@ class ProductionProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   int get pendingFromYesterday => _pendingFromYesterday;
+  int get totalTableUnits => _tableEggs.fold(0, (s, e) => s + e.quantity);
 
   // Datos para Gráficas (Adaptativo con Desglose)
   List<Map<String, dynamic>> get adaptiveChartData {
@@ -218,9 +219,23 @@ class ProductionProvider with ChangeNotifier {
   }
 
   // Cálculos de balance (Basados en hoy o el día seleccionado)
-  int get totalRawCount => _dailyBatchCollections.fold(0, (sum, item) => sum + item.quantity);
-  int get totalSortedCount => _dailySortedProductions.fold(0, (sum, item) => sum + item.usefulQuantity + item.damagedQuantity);
+  int get totalRawCount => _dailyBatchCollections.where((c) => c.type == 'collection').fold(0, (sum, item) => sum + item.quantity);
+  int get totalRawAdjustments => _dailyBatchCollections.where((c) => c.type != 'collection').fold(0, (sum, item) => sum + item.quantity);
+  
+  // Lo clasificado segregado
+  int get sortedHarvestUnits => _dailySortedProductions.where((p) => p.origin == 'harvest').fold(0, (sum, item) => sum + item.usefulQuantity + item.damagedQuantity);
+  int get sortedRemnantUnits => _dailySortedProductions.where((p) => p.origin == 'remnant').fold(0, (sum, item) => sum + item.usefulQuantity + item.damagedQuantity);
+  
+  int get totalSortedCount => sortedHarvestUnits + sortedRemnantUnits;
   int get totalDailyDamaged => _dailySortedProductions.fold(0, (sum, item) => sum + item.damagedQuantity);
+  
+  // El remanente que había al inicio (suma de lo que dice la mesa)
+  // Al ser persistente, este es el origen de verdad para el cálculo de "Ayer"
+  int get totalInitialTableRemnants => totalTableUnits;
+  
+  // Producción neta de hoy = Lo recolectado hoy - lo que ya sabíamos que quedó de ayer
+  int get netTodayHarvest => totalRawCount - totalInitialTableRemnants;
+
   int get pendingEggs => (_pendingFromYesterday + totalRawCount) - totalSortedCount;
 
   // Carga inicial: HOY + Historial (3d/7d)
@@ -342,8 +357,64 @@ class ProductionProvider with ChangeNotifier {
     notifyListeners();
     try {
       for (var model in models) {
-        await _service.createSortedProduction(model);
+        if (model.productSizeId == null) {
+          await _service.createSortedProduction(model);
+          continue;
+        }
+
+        // --- Lógica inteligente de repartición (Remanente vs Cosecha) ---
+        int totalToAdd = model.usefulQuantity;
+        int currentRemnant = tableEggsForSize(model.productSizeId!);
+
+        if (currentRemnant > 0 && totalToAdd > 0) {
+          int remainingOnTable = tableEggsRemainingForSize(model.productSizeId!);
+          int useFromRemnant = totalToAdd > remainingOnTable ? remainingOnTable : totalToAdd;
+          int remainingForHarvest = totalToAdd - useFromRemnant;
+
+          // 1. Guardar porción de remanente
+          if (useFromRemnant > 0) {
+            await _service.createSortedProduction(ProductionModel(
+              productSizeId: model.productSizeId,
+              usefulQuantity: useFromRemnant,
+              damagedQuantity: model.damagedQuantity,
+              date: model.date,
+              origin: 'remnant',
+            ));
+
+            // Ya NO borramos ni reducimos la mesa. 
+            // Se queda como el historial de lo que se encontró en la mañana.
+          }
+
+          // 2. Guardar porción de cosecha nueva
+          if (remainingForHarvest > 0) {
+            await _service.createSortedProduction(ProductionModel(
+              productSizeId: model.productSizeId,
+              usefulQuantity: remainingForHarvest,
+              damagedQuantity: 0,
+              date: model.date,
+              origin: 'harvest',
+            ));
+          }
+        } else {
+          await _service.createSortedProduction(model);
+        }
       }
+      await fetchDailyData(date: date);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> updateSortedProduction(ProductionModel model, {String? date}) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _service.updateSortedProduction(model);
       await fetchDailyData(date: date);
       return true;
     } catch (e) {
@@ -458,6 +529,17 @@ class ProductionProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  // Huevos que QUEDAN en mesa (Total inicial - Lo ya clasificado hoy)
+  int tableEggsRemainingForSize(int sizeId) {
+    int initial = tableEggsForSize(sizeId);
+    int alreadySorted = _dailySortedProductions
+        .where((p) => p.productSizeId == sizeId && p.origin == 'remnant')
+        .fold(0, (s, p) => s + p.usefulQuantity);
+    
+    int remaining = initial - alreadySorted;
+    return remaining > 0 ? remaining : 0;
   }
 
   void clearError() {
