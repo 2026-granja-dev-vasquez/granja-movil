@@ -142,4 +142,22 @@ class CashProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+  Future<void> voidTransaction(int id, String reason) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _service.voidTransaction(id, reason);
+      // Actualizar la caja actual o el historial para reflejar los cambios
+      if (_activeBox != null) {
+        await fetchActiveBox();
+      }
+      _errorMessage = null;
+    } catch (e) {
+      _errorMessage = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

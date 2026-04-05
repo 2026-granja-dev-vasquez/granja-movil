@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/cash_provider.dart';
+import '../../auth/providers/auth_provider.dart';
 import 'cash_history_screen.dart';
 
 class CashBoxScreen extends StatefulWidget {
@@ -488,95 +489,148 @@ class _CashBoxScreenState extends State<CashBoxScreen> {
 
   Widget _buildTransactionTile(dynamic tx, NumberFormat format) {
     final isIncome = tx.type == 'income';
+    final isVoided = tx.isVoided;
     final day = DateFormat('dd').format(tx.createdAt);
     final month = DateFormat('MMM').format(tx.createdAt).toUpperCase();
+    final isAdmin = context.read<AuthProvider>().user?.role == 'admin';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isVoided ? Colors.grey.shade100 : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(color: isVoided ? Colors.grey.shade200 : Colors.grey.shade100),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        leading: Row(
-          mainAxisSize: MainAxisSize.min,
+      child: Opacity(
+        opacity: isVoided ? 0.6 : 1.0,
+        child: Column(
           children: [
-            // Badge de Fecha
-            Container(
-              width: 48,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              leading: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    day,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
-                      color: Colors.indigo,
-                      height: 1.1,
+                  // Badge de Fecha
+                  Container(
+                    width: 48,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isVoided ? Colors.grey.shade200 : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          day,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                            color: isVoided ? Colors.grey.shade600 : Colors.indigo,
+                            height: 1.1,
+                            decoration: isVoided ? TextDecoration.lineThrough : null,
+                          ),
+                        ),
+                        Text(
+                          month,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey.shade600,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Text(
-                    month,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade600,
-                      letterSpacing: 0.5,
+                  const SizedBox(width: 12),
+                  CircleAvatar(
+                    backgroundColor: isVoided 
+                        ? Colors.grey.shade200
+                        : (isIncome ? Colors.green.shade50 : Colors.red.shade50),
+                    radius: 16,
+                    child: Icon(
+                      isIncome ? Icons.arrow_downward : Icons.arrow_upward,
+                      color: isVoided ? Colors.grey : (isIncome ? Colors.green : Colors.red),
+                      size: 14,
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(width: 12),
-            CircleAvatar(
-              backgroundColor: isIncome
-                  ? Colors.green.shade50
-                  : Colors.red.shade50,
-              radius: 16,
-              child: Icon(
-                isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-                color: isIncome ? Colors.green : Colors.red,
-                size: 14,
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      tx.category.toUpperCase(),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        color: isVoided ? Colors.grey : (isIncome ? Colors.green.shade700 : Colors.red.shade700),
+                        letterSpacing: 0.5,
+                        decoration: isVoided ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                  ),
+                  if (isVoided)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: Colors.red.shade100, borderRadius: BorderRadius.circular(6)),
+                      child: const Text("ANULADO", style: TextStyle(color: Colors.red, fontSize: 8, fontWeight: FontWeight.bold)),
+                    ),
+                ],
+              ),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  tx.description ?? "Sin descripción",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isVoided ? Colors.grey : Colors.black87,
+                    fontWeight: FontWeight.w500,
+                    height: 1.3,
+                    decoration: isVoided ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "${isIncome ? '+' : '-'} ${format.format(tx.amount)}",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                      color: isVoided ? Colors.grey : (isIncome ? Colors.green.shade600 : Colors.red.shade600),
+                      decoration: isVoided ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                  if (isAdmin && !isVoided) ...[
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Icons.cancel_outlined, size: 20, color: Colors.redAccent),
+                      onPressed: () => _showVoidDialog(tx),
+                      tooltip: "Anular",
+                      constraints: const BoxConstraints(),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
+                ],
               ),
             ),
+            if (isVoided && tx.voidReason != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.05),
+                  borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16)),
+                ),
+                child: Text(
+                  "Motivo de anulación: ${tx.voidReason}",
+                  style: const TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic),
+                ),
+              ),
           ],
-        ),
-        title: Text(
-          tx.category.toUpperCase(),
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 13,
-            color: isIncome ? Colors.green.shade700 : Colors.red.shade700,
-            letterSpacing: 0.5,
-          ),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(
-            tx.description ?? "Sin descripción",
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.black87,
-              fontWeight: FontWeight.w500,
-              height: 1.3,
-            ),
-          ),
-        ),
-        trailing: Text(
-          "${isIncome ? '+' : '-'} ${format.format(tx.amount)}",
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            fontSize: 15,
-            color: isIncome ? Colors.green.shade600 : Colors.red.shade600,
-          ),
         ),
       ),
     );
@@ -746,6 +800,75 @@ class _CashBoxScreenState extends State<CashBoxScreen> {
               child: isSaving 
                   ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Text("GUARDAR"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showVoidDialog(dynamic tx) {
+    final reasonController = TextEditingController();
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text("Anular Transacción"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "¿Estás seguro de que deseas anular este ${tx.type == 'income' ? 'ingreso' : 'egreso'} de Q${tx.amount.toStringAsFixed(2)}?",
+                style: const TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: reasonController,
+                decoration: const InputDecoration(
+                  labelText: "Motivo de la anulación",
+                  border: OutlineInputBorder(),
+                  hintText: "Ej: Registro duplicado",
+                ),
+                autofocus: true,
+                maxLines: 2,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(context),
+              child: const Text("CANCELAR"),
+            ),
+            ElevatedButton(
+              onPressed: isSaving ? null : () async {
+                final reason = reasonController.text.trim();
+                if (reason.length < 3) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Ingresa un motivo válido (mínimo 3 caracteres)."))
+                  );
+                  return;
+                }
+
+                setState(() => isSaving = true);
+                try {
+                  await context.read<CashProvider>().voidTransaction(tx.id, reason);
+                  if (context.mounted) Navigator.pop(context);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(e.toString()))
+                    );
+                    setState(() => isSaving = false);
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              child: isSaving 
+                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text("ANULAR"),
             ),
           ],
         ),

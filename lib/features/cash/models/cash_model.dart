@@ -66,6 +66,8 @@ class CashTransactionModel {
   final double amount;
   final String category;
   final String? description;
+  final String status;
+  final String? voidReason;
   final DateTime createdAt;
 
   CashTransactionModel({
@@ -75,8 +77,12 @@ class CashTransactionModel {
     required this.amount,
     required this.category,
     this.description,
+    this.status = 'active',
+    this.voidReason,
     required this.createdAt,
   });
+
+  bool get isVoided => status == 'voided';
 
   bool get isIncome => type == 'income';
 
@@ -93,6 +99,8 @@ class CashTransactionModel {
       amount: _parseAmount(json['amount']),
       category: json['category'],
       description: json['description'],
+      status: json['status'] ?? 'active',
+      voidReason: json['void_reason'],
       createdAt: DateTime.parse(json['created_at']),
     );
   }

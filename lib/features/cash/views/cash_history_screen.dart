@@ -242,25 +242,72 @@ class _CashHistoryScreenState extends State<CashHistoryScreen> {
 
   Widget _buildTransactionItem(CashTransactionModel tx, NumberFormat format) {
     final isIncome = tx.isIncome;
+    final isVoided = tx.isVoided;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 4, left: 8, right: 8),
       decoration: BoxDecoration(
-        border: Border(left: BorderSide(color: isIncome ? Colors.green.shade100 : Colors.red.shade100, width: 3)),
+        color: isVoided ? Colors.grey.shade50 : Colors.white,
+        border: Border(left: BorderSide(color: isVoided ? Colors.grey : (isIncome ? Colors.green.shade100 : Colors.red.shade100), width: 3)),
       ),
-      child: ListTile(
-        dense: true,
-        title: Text(
-          tx.category.toUpperCase(), 
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: isIncome ? Colors.green.shade700 : Colors.red.shade700)
-        ),
-        subtitle: Text(
-          tx.description ?? "Sin descripción", 
-          style: const TextStyle(fontSize: 11, color: Colors.black87)
-        ),
-        trailing: Text(
-          "${isIncome ? '+' : '-'} ${format.format(tx.amount)}",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: isIncome ? Colors.green : Colors.red),
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
+            dense: true,
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    tx.category.toUpperCase(), 
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800, 
+                      fontSize: 11, 
+                      color: isVoided ? Colors.grey : (isIncome ? Colors.green.shade700 : Colors.red.shade700),
+                      decoration: isVoided ? TextDecoration.lineThrough : null,
+                    )
+                  ),
+                ),
+                if (isVoided)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(4)),
+                    child: const Text("ANULADO", style: TextStyle(color: Colors.red, fontSize: 7, fontWeight: FontWeight.bold)),
+                  ),
+              ],
+            ),
+            subtitle: Text(
+              tx.description ?? "Sin descripción", 
+              style: TextStyle(
+                fontSize: 11, 
+                color: isVoided ? Colors.grey : Colors.black87,
+                decoration: isVoided ? TextDecoration.lineThrough : null,
+              )
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "${isIncome ? '+' : '-'} ${format.format(tx.amount)}",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold, 
+                    fontSize: 12, 
+                    color: isVoided ? Colors.grey : (isIncome ? Colors.green : Colors.red),
+                    decoration: isVoided ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isVoided && tx.voidReason != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 12, bottom: 8, right: 12),
+              child: Text(
+                "Anulado: ${tx.voidReason}",
+                style: const TextStyle(fontSize: 10, color: Colors.red, fontStyle: FontStyle.italic),
+              ),
+            ),
+        ],
       ),
     );
   }

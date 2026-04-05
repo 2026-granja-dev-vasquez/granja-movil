@@ -115,4 +115,16 @@ class CashService {
     }
     throw Exception('Error al actualizar nombre de caja');
   }
+
+  Future<void> voidTransaction(int id, String reason) async {
+    final response = await http.post(
+      Uri.parse('${ApiConstants.baseUrl}/cash/transactions/$id/void'),
+      headers: await _getHeaders(),
+      body: jsonEncode({'void_reason': reason}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(jsonDecode(response.body)['message'] ?? 'Error al anular transacción');
+    }
+  }
 }
