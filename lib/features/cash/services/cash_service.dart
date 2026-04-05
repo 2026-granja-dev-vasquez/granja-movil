@@ -127,4 +127,62 @@ class CashService {
       throw Exception(jsonDecode(response.body)['message'] ?? 'Error al anular transacción');
     }
   }
+
+  Future<List<ExpenseCategoryModel>> getExpenseCategories() async {
+    final response = await http.get(
+      Uri.parse(ApiConstants.expenseCategories),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.map((e) => ExpenseCategoryModel.fromJson(e)).toList();
+    }
+    throw Exception('Error al obtener rubros');
+  }
+
+  Future<ExpenseCategoryModel> createExpenseCategory(String name) async {
+    final response = await http.post(
+      Uri.parse(ApiConstants.expenseCategories),
+      headers: await _getHeaders(),
+      body: jsonEncode({'name': name}),
+    );
+    if (response.statusCode == 201) {
+      return ExpenseCategoryModel.fromJson(jsonDecode(response.body));
+    }
+    throw Exception(jsonDecode(response.body)['message'] ?? 'Error al crear rubro');
+  }
+
+  Future<void> deleteExpenseCategory(int id) async {
+    final response = await http.delete(
+      Uri.parse(ApiConstants.expenseCategoryDelete(id)),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode != 200) {
+      throw Exception(jsonDecode(response.body)['message'] ?? 'Error al eliminar rubro');
+    }
+  }
+
+  Future<ExpenseCategoryModel> renameExpenseCategory(int id, String name) async {
+    final response = await http.patch(
+      Uri.parse(ApiConstants.expenseCategoryUpdate(id)),
+      headers: await _getHeaders(),
+      body: jsonEncode({'name': name}),
+    );
+    if (response.statusCode == 200) {
+      return ExpenseCategoryModel.fromJson(jsonDecode(response.body));
+    }
+    throw Exception(jsonDecode(response.body)['message'] ?? 'Error al renombrar rubro');
+  }
+
+  Future<void> updateTransactionCategory(int txId, String category) async {
+    final response = await http.patch(
+      Uri.parse(ApiConstants.cashTransactionUpdate(txId)),
+      headers: await _getHeaders(),
+      body: jsonEncode({'category': category}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception(jsonDecode(response.body)['message'] ?? 'Error al actualizar rubro');
+    }
+  }
 }
+

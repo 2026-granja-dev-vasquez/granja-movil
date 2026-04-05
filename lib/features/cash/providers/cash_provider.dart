@@ -7,11 +7,13 @@ class CashProvider with ChangeNotifier {
 
   CashBoxModel? _activeBox;
   List<CashBoxModel> _history = [];
+  List<ExpenseCategoryModel> _expenseCategories = [];
   bool _isLoading = false;
   String? _errorMessage;
 
   CashBoxModel? get activeBox => _activeBox;
   List<CashBoxModel> get history => _history;
+  List<ExpenseCategoryModel> get expenseCategories => _expenseCategories;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -23,7 +25,6 @@ class CashProvider with ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
-
     try {
       _activeBox = await _service.getCurrentBox();
     } catch (e) {
@@ -38,7 +39,6 @@ class CashProvider with ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
-
     try {
       _history = await _service.getHistory();
     } catch (e) {
@@ -50,12 +50,8 @@ class CashProvider with ChangeNotifier {
   }
 
   Future<void> fetchBoxDetails(int id) async {
-    // Check if we already have transactions for this box in history
     final index = _history.indexWhere((box) => box.id == id);
-    if (index != -1 && _history[index].transactions.isNotEmpty) {
-      return; // Already loaded
-    }
-
+    if (index != -1 && _history[index].transactions.isNotEmpty) return;
     try {
       final details = await _service.getBoxDetails(id);
       if (index != -1) {
@@ -91,7 +87,7 @@ class CashProvider with ChangeNotifier {
       await _service.closeBox();
       _activeBox = null;
       _errorMessage = null;
-      await fetchHistory(); // Refresh history
+      await fetchHistory();
     } catch (e) {
       _errorMessage = e.toString();
       rethrow;
@@ -101,12 +97,13 @@ class CashProvider with ChangeNotifier {
     }
   }
 
-  Future<void> addTransaction(String type, double amount, String category, String description, DateTime? date) async {
+  Future<void> addTransaction(String type, double amount, String category,
+      String description, DateTime? date) async {
     _isLoading = true;
     notifyListeners();
     try {
       await _service.addTransaction(type, amount, category, description, date);
-      await fetchActiveBox(); // Refresh to see updated totals and new transaction
+      await fetchActiveBox();
       _errorMessage = null;
     } catch (e) {
       _errorMessage = e.toString();
@@ -121,20 +118,11 @@ class CashProvider with ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
-
     try {
       final updatedBox = await _service.updateBox(id, newName);
-      
-      // Si es la caja activa, actualizarla
-      if (_activeBox?.id == id) {
-        _activeBox = updatedBox;
-      }
-
-      // Actualizar en el historial si existe
+      if (_activeBox?.id == id) _activeBox = updatedBox;
       final index = _history.indexWhere((box) => box.id == id);
-      if (index != -1) {
-        _history[index] = updatedBox;
-      }
+      if (index != -1) _history[index] = updatedBox;
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -142,15 +130,13 @@ class CashProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+
   Future<void> voidTransaction(int id, String reason) async {
     _isLoading = true;
     notifyListeners();
     try {
       await _service.voidTransaction(id, reason);
-      // Actualizar la caja actual o el historial para reflejar los cambios
-      if (_activeBox != null) {
-        await fetchActiveBox();
-      }
+      if (_activeBox != null) await fetchActiveBox();
       _errorMessage = null;
     } catch (e) {
       _errorMessage = e.toString();
@@ -158,6 +144,72 @@ class CashProvider with ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  // ── Rubros de Egresos ────────────────────────────────────────────────────
+
+  Future<void> fetchExpenseCategories() async {
+    try {
+      _expenseCategories = await _service.getExpenseCategories();
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<bool> createExpenseCategory(String name) async {
+    try {
+      final newCat = await _service.createExpenseCategory(name);
+      _expenseCategories.add(newCat);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteExpenseCategory(int id) async {
+    try {
+      await _service.deleteExpenseCategory(id);
+      _expenseCategories.removeWhere((c) => c.id == id);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> renameExpenseCategory(int id, String newName) async {
+    try {
+      final updated = await _service.renameExpenseCategory(id, newName);
+      final index = _expenseCategories.indexWhere((c) => c.id == id);
+      if (index != -1) {
+        _expenseCategories[index] = updated;
+        notifyListeners();
+      }
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updateTransactionCategory(int txId, String category) async {
+    try {
+      await _service.updateTransactionCategory(txId, category);
+      if (_activeBox != null) await fetchActiveBox();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
     }
   }
 }

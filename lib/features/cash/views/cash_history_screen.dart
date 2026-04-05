@@ -5,7 +5,8 @@ import '../providers/cash_provider.dart';
 import '../models/cash_model.dart';
 
 class CashHistoryScreen extends StatefulWidget {
-  const CashHistoryScreen({super.key});
+  final bool isEmbedded;
+  const CashHistoryScreen({super.key, this.isEmbedded = false});
 
   @override
   State<CashHistoryScreen> createState() => _CashHistoryScreenState();
@@ -60,7 +61,7 @@ class _CashHistoryScreenState extends State<CashHistoryScreen> {
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
+      appBar: widget.isEmbedded ? null : AppBar(
         title: const Text('Historial de Cajas'),
       ),
       body: Column(

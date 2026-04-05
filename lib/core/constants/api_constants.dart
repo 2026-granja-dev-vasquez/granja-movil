@@ -27,5 +27,11 @@ class ApiConstants {
   static String get ordersHistory => '$baseUrl/orders/history';
   static String ordersStatus(int id) => '$baseUrl/orders/$id/status';
   static String ordersUpdate(int id) => '$baseUrl/orders/$id';
+
+  // Módulo de Caja
+  static String get expenseCategories => '$baseUrl/expense-categories';
+  static String expenseCategoryUpdate(int id) => '$baseUrl/expense-categories/$id';
+  static String expenseCategoryDelete(int id) => '$baseUrl/expense-categories/$id';
+  static String cashTransactionUpdate(int id) => '$baseUrl/cash/transactions/$id';
 }
 
