@@ -739,7 +739,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                   const SizedBox(height: 12),
                   ...provider.tableEggs.map((egg) {
                     final name = egg.productSizeName ?? 'Tamaño ${egg.productSizeId}';
-                    final remaining = provider.tableEggsRemainingForSize(egg.productSizeId!);
+                    final remaining = provider.tableEggsRemainingForSize(egg.productSizeId);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Row(
