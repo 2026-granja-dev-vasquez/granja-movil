@@ -624,7 +624,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                 "HISTÓRICO/AYER",
                 tableRemainingInitial.toString(),
                 Colors.orange.shade300,
-                onReset: hasDeficit ? () => _openResetDialog(provider) : null,
+                onReset: (hasDeficit || remaining < 0) ? () => _openResetDialog(provider) : null,
               ),
               _statHeader("POR CLASIFICAR", remaining.toString(), remaining < 0 ? Colors.redAccent : Colors.tealAccent),
             ],
@@ -1045,7 +1045,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.orange.shade200)),
               child: const Text(
-                "¿Estás seguro? Esto pondrá en CERO el saldo histórico para corregir errores y empezar el día limpio.",
+                "¿Estás seguro? Esto corregirá cualquier balance negativo o deuda de ayer, dejando el inventario en CERO para empezar limpio.",
                 style: TextStyle(fontSize: 12, color: Colors.brown),
               ),
             ),

@@ -233,10 +233,12 @@ class ProductionProvider with ChangeNotifier {
   // Al ser persistente, este es el origen de verdad para el cálculo de "Ayer"
   int get totalInitialTableRemnants => totalTableUnits;
   
-  // Producción neta de hoy = Lo recolectado hoy - lo que ya sabíamos que quedó de ayer
-  int get netTodayHarvest => totalRawCount - totalInitialTableRemnants;
+  // Produccion de hoy = exactamente lo recolectado hoy (los de ayer ya estan en HISTORICO/AYER)
+  int get netTodayHarvest => totalRawCount;
 
-  int get pendingEggs => (_pendingFromYesterday + totalRawCount) - totalSortedCount;
+  // POR CLASIFICAR = Ayer (mesa) + Hoy (cosecha) + Ajustes - Ya clasificado
+  // Se usa totalInitialTableRemnants (lo que el usuario ve en pantalla) para consistencia
+  int get pendingEggs => (totalInitialTableRemnants + totalRawCount + totalRawAdjustments) - totalSortedCount;
 
   // Carga inicial: HOY + Historial (3d/7d)
   Future<void> fetchDailyData({String? date}) async {
