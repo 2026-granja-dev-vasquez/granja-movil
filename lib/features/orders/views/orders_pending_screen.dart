@@ -225,6 +225,46 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
                 ),
               ),
             ],
+
+            // NUEVO: Resumen Financiero
+            if (order.totalAmount > 0) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: order.isPaid ? Colors.green.shade50 : (order.isPartiallyPaid ? Colors.amber.shade50 : Colors.indigo.shade50),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: order.isPaid ? Colors.green.shade100 : (order.isPartiallyPaid ? Colors.amber.shade100 : Colors.indigo.shade100)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          order.isPaid ? 'PAGADO TOTAL' : (order.isPartiallyPaid ? 'PAGO PARCIAL' : 'PENDIENTE'), 
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: order.isPaid ? Colors.green : (order.isPartiallyPaid ? Colors.amber.shade900 : Colors.indigo)),
+                        ),
+                        Text(
+                          'Q${order.paidAmount.toStringAsFixed(2)} / Q${order.totalAmount.toStringAsFixed(2)}',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: (order.paidAmount / order.totalAmount).clamp(0, 1),
+                        backgroundColor: Colors.white,
+                        valueColor: AlwaysStoppedAnimation<Color>(order.isPaid ? Colors.green : (order.isPartiallyPaid ? Colors.amber : Colors.indigo)),
+                        minHeight: 6,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const Divider(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -630,8 +670,7 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
                         ),
                       );
                     }).toList(),
-                    const SizedBox(height: 16),
-                    // Nuevo switch para pago recibido
+                    // Switch para pago recibido (Cobro del saldo pendiente)
                     Container(
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
@@ -641,7 +680,7 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
                       ),
                       child: SwitchListTile(
                         title: Text(
-                          paymentReceived ? '¡Pago Recibido!' : 'Venta al Crédito',
+                          paymentReceived ? '¡Cobrar Saldo!' : 'Entregar al Crédito',
                           style: TextStyle(
                             fontWeight: FontWeight.bold, 
                             color: paymentReceived ? Colors.green.shade900 : Colors.orange.shade900
@@ -649,8 +688,8 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
                         ),
                         subtitle: Text(
                           paymentReceived 
-                            ? 'El dinero se registrará en caja.' 
-                            : 'Mandar a cuentas por cobrar.',
+                            ? 'El saldo restante se sumará a caja.' 
+                            : 'El saldo quedará pendiente de cobro.',
                           style: TextStyle(fontSize: 12, color: paymentReceived ? Colors.green.shade700 : Colors.orange.shade700),
                         ),
                         secondary: Icon(
@@ -665,18 +704,47 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
                     const SizedBox(height: 10),
                     Container(
                       width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Monto Total:', style: TextStyle(fontSize: 13)),
+                              Text('Q ${total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Ya Pagado (Abonos):', style: TextStyle(fontSize: 13, color: Colors.green)),
+                              Text('- Q ${order.paidAmount.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                       decoration: BoxDecoration(
-                        color: Colors.indigo.shade900,
+                        color: total - order.paidAmount <= 0 ? Colors.green.shade900 : Colors.indigo.shade900,
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [BoxShadow(color: Colors.indigo.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
                       ),
                       child: Column(
                         children: [
-                          const Text('TOTAL A PAGAR', style: TextStyle(color: Colors.indigoAccent, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 2)),
+                          Text(total - order.paidAmount <= 0 ? 'PEDIDO TOTALMENTE CUBIERTO' : 'SALDO PENDIENTE A COBRAR', 
+                             style: const TextStyle(color: Colors.indigoAccent, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 2)),
                           const SizedBox(height: 4),
                           Text(
-                            'Q ${total.toStringAsFixed(2)}',
+                            'Q ${(total - order.paidAmount).clamp(0, 999999).toStringAsFixed(2)}',
                             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 26),
                           ),
                         ],
@@ -726,7 +794,7 @@ class _OrdersPendingScreenState extends State<OrdersPendingScreen> {
                     createSale: true,
                     saleData: {
                       'date': DateTime.now().toIso8601String().split('T')[0], // Enviar fecha local YYYY-MM-DD
-                      'paid_amount': paymentReceived ? total : 0.0, 
+                      'paid_amount': paymentReceived ? (total - order.paidAmount).clamp(0, 999999) : 0.0, 
                       'items': saleItems,
                       'notes': paymentReceived ? null : 'Crédito generado desde Pedido #${order.id}',
                     }

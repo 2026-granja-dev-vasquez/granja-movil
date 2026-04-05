@@ -94,7 +94,7 @@ class OrderProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> createOrder(int customerId, DateTime deliveryDate, List<Map<String, dynamic>> items, {String? notes}) async {
+  Future<bool> createOrder(int customerId, DateTime deliveryDate, List<Map<String, dynamic>> items, {String? notes, double paidAmount = 0}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -114,6 +114,7 @@ class OrderProvider with ChangeNotifier {
           'customer_id': customerId,
           'delivery_date': deliveryDate.toUtc().toIso8601String(),
           'items': items,
+          'paid_amount': paidAmount,
           'notes': notes,
         }),
       );

@@ -5,6 +5,8 @@ class OrderItemModel {
   final int orderId;
   final int productSizeId;
   final int quantity;
+  final double unitPrice;
+  final double subtotal;
   final ProductSizeModel? productSize;
 
   OrderItemModel({
@@ -12,6 +14,8 @@ class OrderItemModel {
     required this.orderId,
     required this.productSizeId,
     required this.quantity,
+    this.unitPrice = 0,
+    this.subtotal = 0,
     this.productSize,
   });
 
@@ -21,6 +25,8 @@ class OrderItemModel {
       orderId: json['order_id'] ?? 0,
       productSizeId: json['product_size_id'] ?? 0,
       quantity: json['quantity'] ?? 0,
+      unitPrice: (json['unit_price'] ?? 0).toDouble(),
+      subtotal: (json['subtotal'] ?? 0).toDouble(),
       productSize: json['product_size'] != null 
           ? ProductSizeModel.fromJson(json['product_size']) 
           : null,
@@ -31,6 +37,8 @@ class OrderItemModel {
     return {
       'product_size_id': productSizeId,
       'quantity': quantity,
+      'unit_price': unitPrice,
+      'subtotal': subtotal,
     };
   }
 

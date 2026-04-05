@@ -9,6 +9,8 @@ class OrderModel {
   final String status;
   final String? notes;
   final DateTime createdAt;
+  final double totalAmount;
+  final double paidAmount;
   final CustomerModel? customer;
 
   final List<OrderItemModel> items;
@@ -20,6 +22,8 @@ class OrderModel {
     required this.status,
     this.notes,
     required this.createdAt,
+    this.totalAmount = 0,
+    this.paidAmount = 0,
     this.customer,
     this.items = const [],
   });
@@ -39,6 +43,8 @@ class OrderModel {
       status: json['status'],
       notes: json['notes'],
       createdAt: DateTime.parse(json['created_at']).toLocal(),
+      totalAmount: (json['total_amount'] ?? 0).toDouble(),
+      paidAmount: (json['paid_amount'] ?? 0).toDouble(),
       customer: json['customer'] != null ? CustomerModel.fromJson(json['customer']) : null,
       items: itemsList,
     );
@@ -58,4 +64,8 @@ class OrderModel {
   String get formattedDeliveryDate {
     return DateFormat('EEE d MMM, hh:mm a', 'es_GT').format(deliveryDate);
   }
+
+  double get pendingAmount => totalAmount - paidAmount;
+  bool get isPaid => paidAmount >= totalAmount && totalAmount > 0;
+  bool get isPartiallyPaid => paidAmount > 0 && paidAmount < totalAmount;
 }

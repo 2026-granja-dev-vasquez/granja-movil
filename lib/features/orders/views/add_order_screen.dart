@@ -4,7 +4,8 @@ import 'package:intl/intl.dart';
 import '../providers/order_provider.dart';
 import '../../sales/providers/customer_provider.dart';
 import '../../sales/models/customer_model.dart';
-import '../../inventory/providers/inventory_provider.dart';
+import '../../products/providers/product_provider.dart';
+import '../../products/models/product_size_model.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../models/order_model.dart' as order_model;
 
@@ -22,10 +23,12 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
   final TextEditingController _notesController = TextEditingController();
+  final TextEditingController _paidAmountController = TextEditingController(text: "0.00");
   bool _isSaving = false;
+  bool _registerPayment = false;
 
   // Items logic
-  final List<Map<String, dynamic>> _items = []; // {product_size_id, name, qty_units, formatted_qty}
+  final List<Map<String, dynamic>> _items = []; // {product_size_id, name, quantity, unit_price, subtotal, formatted_qty, paid_quantity}
 
   @override
   void initState() {
@@ -43,10 +46,16 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
         if (c > 0) f += "$c ct";
         if (u > 0) f += "${f.isEmpty ? '' : ' '}$u u";
         
+        final isCartonBased = item.quantity >= 30 && item.quantity % 30 == 0;
+        final displayPrice = isCartonBased ? (item.unitPrice * 30) : item.unitPrice;
+
         _items.add({
           'product_size_id': item.productSizeId,
           'name': item.productSize?.name ?? '...',
           'quantity': item.quantity,
+          'unit_price': item.unitPrice,
+          'display_price': displayPrice,
+          'subtotal': item.subtotal,
           'formatted_qty': f,
         });
       }
@@ -54,7 +63,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CustomerProvider>().fetchCustomers();
-      context.read<InventoryProvider>().fetchInventory();
+      context.read<ProductProvider>().fetchSizes();
     });
   }
 
@@ -109,11 +118,17 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
         notes: _notesController.text.isEmpty ? null : _notesController.text,
       );
     } else {
+      double totalPaid = 0;
+      if (_registerPayment) {
+        totalPaid = double.tryParse(_paidAmountController.text) ?? 0;
+      }
+
       success = await context.read<OrderProvider>().createOrder(
         _selectedCustomer!.id!,
         finalDateTime,
         _items,
         notes: _notesController.text.isEmpty ? null : _notesController.text,
+        paidAmount: totalPaid,
       );
     }
 
@@ -260,12 +275,21 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
               ..._items.asMap().entries.map((entry) {
                 final idx = entry.key;
                 final item = entry.value;
+                final displayPrice = item['display_price'] ?? item['unit_price'] ?? 0.0;
+                final subtotal = item['subtotal'] ?? 0.0;
+                
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     dense: true,
                     title: Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('Cantidad: ${item['formatted_qty']}'),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Cantidad: ${item['formatted_qty']}'),
+                        Text('Precio: Q${displayPrice.toStringAsFixed(2)} | Subtotal: Q${subtotal.toStringAsFixed(2)}', style: TextStyle(color: Colors.indigo.shade700, fontSize: 11)),
+                      ],
+                    ),
                     trailing: IconButton(
                       icon: const Icon(Icons.delete_outline, color: Colors.red),
                       onPressed: () => setState(() => _items.removeAt(idx)),
@@ -286,6 +310,88 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                 foregroundColor: Colors.indigo,
               ),
             ),
+
+            if (_items.isNotEmpty && widget.order == null) ...[
+              const SizedBox(height: 32),
+              const Divider(),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(Icons.payments_outlined, color: Colors.green),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      '¿El cliente pagó algo por anticipado?',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green),
+                    ),
+                  ),
+                  Switch(
+                    value: _registerPayment,
+                    onChanged: (val) {
+                      setState(() {
+                        _registerPayment = val;
+                        if (val) {
+                           // Sugerir el total del pedido por defecto
+                           double total = 0;
+                           for (var item in _items) {
+                             total += (item['subtotal'] ?? 0);
+                           }
+                           _paidAmountController.text = total.toStringAsFixed(2);
+                        } else {
+                          _paidAmountController.text = "0.00";
+                        }
+                      });
+                    },
+                    activeColor: Colors.green,
+                  ),
+                ],
+              ),
+              if (_registerPayment) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('TOTAL DEL PEDIDO:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
+                          Builder(builder: (context) {
+                            double total = 0;
+                            for (var item in _items) {
+                              total += (item['subtotal'] ?? 0);
+                            }
+                            return Text('Q${total.toStringAsFixed(2)}', 
+                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87));
+                          }),
+                        ],
+                      ),
+                      const Divider(height: 24),
+                      const Text('MONTO DEL ABONO:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 12)),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _paidAmountController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green),
+                        decoration: const InputDecoration(
+                          prefixText: 'Q ',
+                          border: OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
 
             const SizedBox(height: 24),
             TextField(
@@ -315,16 +421,17 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   }
 
   void _showAddItemDialog() {
-    final invProvider = context.read<InventoryProvider>();
-    if (invProvider.inventory.isEmpty) {
+    final productProvider = context.read<ProductProvider>();
+    if (productProvider.sizes.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No hay tamaños de huevo cargados en inventario')),
+        const SnackBar(content: Text('No hay tamaños de huevo registrados')),
       );
       return;
     }
 
-    dynamic selectedSize = invProvider.inventory.first;
+    ProductSizeModel selectedSize = productProvider.sizes.first;
     final TextEditingController qtyController = TextEditingController();
+    final TextEditingController priceController = TextEditingController(text: selectedSize.cartonPrice.toStringAsFixed(2));
     bool inCartons = true;
 
     showDialog(
@@ -332,61 +439,99 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           title: const Text('Agregar a Entrega'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<dynamic>(
-                value: selectedSize,
-                decoration: const InputDecoration(labelText: 'Tamaño'),
-                items: invProvider.inventory.map((size) {
-                  return DropdownMenuItem(value: size, child: Text(size.name));
-                }).toList(),
-                onChanged: (val) => setDialogState(() => selectedSize = val),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: qtyController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: inCartons ? 'Cartones' : 'Huevos',
-                        border: const OutlineInputBorder(),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<ProductSizeModel>(
+                  value: selectedSize,
+                  decoration: const InputDecoration(labelText: 'Tamaño'),
+                  items: productProvider.sizes.map((size) {
+                    return DropdownMenuItem(value: size, child: Text(size.name));
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setDialogState(() {
+                        selectedSize = val;
+                        priceController.text = inCartons 
+                          ? val.cartonPrice.toStringAsFixed(2) 
+                          : val.unitPrice.toStringAsFixed(2);
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: qtyController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: inCartons ? 'Cartones' : 'Huevos',
+                          border: const OutlineInputBorder(),
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    Column(
+                      children: [
+                        const Text('Modo', style: TextStyle(fontSize: 10)),
+                        Switch(
+                          value: inCartons,
+                          onChanged: (val) {
+                             setDialogState(() {
+                               inCartons = val;
+                               priceController.text = val 
+                                 ? selectedSize.cartonPrice.toStringAsFixed(2) 
+                                 : selectedSize.unitPrice.toStringAsFixed(2);
+                             });
+                          },
+                          activeThumbColor: Colors.indigo,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: priceController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Precio (Sugerido)',
+                    prefixText: 'Q ',
+                    border: OutlineInputBorder(),
+                    helperText: 'Puedes editar el precio si es necesario',
                   ),
-                  const SizedBox(width: 8),
-                  Column(
-                    children: [
-                      const Text('Modo', style: TextStyle(fontSize: 10)),
-                      Switch(
-                        value: inCartons,
-                        onChanged: (val) => setDialogState(() => inCartons = val),
-                        activeThumbColor: Colors.indigo,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCELAR')),
             ElevatedButton(
               onPressed: () {
                 final qty = int.tryParse(qtyController.text);
+                final price = double.tryParse(priceController.text);
                 if (qty == null || qty <= 0) return;
+                if (price == null || price < 0) return;
 
                 final totalUnits = inCartons ? qty * 30 : qty;
                 final formatted = inCartons ? '$qty ct' : '$qty u';
 
+                // Si es por cartón, el precio ingresado es por cartón, pero backend espera por unidad
+                final unitPriceForBackend = inCartons ? price / 30 : price;
+
                 setState(() {
                   _items.add({
-                    'product_size_id': selectedSize.productSizeId,
+                    'product_size_id': selectedSize.id,
                     'name': selectedSize.name,
                     'quantity': totalUnits,
+                    'unit_price': unitPriceForBackend,
+                    'display_price': price, // Guardamos el precio tal cual lo escribió el usuario
+                    'subtotal': totalUnits * unitPriceForBackend,
                     'formatted_qty': formatted,
+                    'paid_quantity': 0,
                   });
                 });
                 Navigator.pop(ctx);
