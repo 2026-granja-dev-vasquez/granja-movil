@@ -360,8 +360,9 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
   // DIALOG: Add classification entry for a size (Simple additive logic)
   // ─────────────────────────────────────────────────────────────────────────
   void _openAddEntryDialog(ProductSizeModel size, ProductionProvider provider, int tableQty, {ProductionModel? editEntry}) {
-    final cartCtrl = TextEditingController(text: editEntry != null ? (editEntry.usefulQuantity ~/ 30).toString() : '0');
-    final unitCtrl = TextEditingController(text: editEntry != null ? (editEntry.usefulQuantity % 30).toString() : '0');
+    final int initialNet = editEntry != null ? editEntry.usefulQuantity + tableQty : 0;
+    final cartCtrl = TextEditingController(text: initialNet > 0 ? (initialNet ~/ 30).toString() : '0');
+    final unitCtrl = TextEditingController(text: initialNet > 0 ? (initialNet % 30).toString() : '0');
     bool isSavingDialog = false;
 
     showDialog(
@@ -455,7 +456,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                             elevation: 0,
                           ),
-                          onPressed: netToday > 0 && !isSavingDialog 
+                          onPressed: (netToday >= tableQty || (netToday == 0 && tableQty == 0)) && netToday > 0 && !isSavingDialog 
                             ? () async {
                                 setDialogState(() => isSavingDialog = true);
                                 bool success;
@@ -463,7 +464,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                                   success = await provider.updateSortedProduction(ProductionModel(
                                     id: editEntry.id,
                                     productSizeId: size.id,
-                                    usefulQuantity: netToday,
+                                    usefulQuantity: netToday - tableQty,
                                     damagedQuantity: editEntry.damagedQuantity,
                                     date: editEntry.date,
                                     origin: editEntry.origin,
@@ -471,7 +472,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                                 } else {
                                   success = await provider.addSortedProduction(ProductionModel(
                                     productSizeId: size.id,
-                                    usefulQuantity: netToday,
+                                    usefulQuantity: netToday - tableQty,
                                     damagedQuantity: 0,
                                     date: _selectedDate,
                                   ));
@@ -587,7 +588,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
     final int netHarvest = provider.netTodayHarvest;
     final int tableRemainingInitial = provider.totalInitialTableRemnants; 
     
-    final int totalSortedToday = provider.totalSortedCount; 
+    final int totalSortedToday = provider.visualGrandSortedCount; 
     final int remaining = provider.pendingEggs;
     final bool hasDeficit = provider.pendingFromYesterday < 0;
 
@@ -625,7 +626,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
             children: [
               _statHeader("DISPONIBLE HOY", netHarvest.toString(), Colors.blue.shade300),
               _statHeader(
-                "HISTÓRICO/AYER",
+                "EN LA MESA",
                 tableRemainingInitial.toString(),
                 Colors.orange.shade300,
                 onReset: (hasDeficit || remaining < 0) ? () => _openResetDialog(provider) : null,

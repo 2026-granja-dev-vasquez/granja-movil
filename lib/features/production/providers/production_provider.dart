@@ -227,6 +227,7 @@ class ProductionProvider with ChangeNotifier {
   int get sortedRemnantUnits => _dailySortedProductions.where((p) => p.origin == 'remnant').fold(0, (sum, item) => sum + item.usefulQuantity + item.damagedQuantity);
   
   int get totalSortedCount => sortedHarvestUnits + sortedRemnantUnits;
+  int get visualGrandSortedCount => sortedHarvestUnits + totalInitialTableRemnants; // TOTAL FISICO VISTO POR EL EMPLEADO
   int get totalDailyDamaged => _dailySortedProductions.fold(0, (sum, item) => sum + item.damagedQuantity);
   
   // El remanente que había al inicio (suma de lo que dice la mesa)
@@ -234,11 +235,10 @@ class ProductionProvider with ChangeNotifier {
   int get totalInitialTableRemnants => totalTableUnits;
   
   // Produccion de hoy = exactamente lo recolectado hoy (los de ayer ya estan en HISTORICO/AYER)
-  int get netTodayHarvest => totalRawCount;
+  int get netTodayHarvest => totalRawCount + totalRawAdjustments;
 
-  // POR CLASIFICAR = Ayer (mesa) + Hoy (cosecha) + Ajustes - Ya clasificado
-  // Se usa totalInitialTableRemnants (lo que el usuario ve en pantalla) para consistencia
-  int get pendingEggs => (totalInitialTableRemnants + totalRawCount + totalRawAdjustments) - totalSortedCount;
+  // POR CLASIFICAR = Déficit Histórico + Hoy (cosecha) + Ajustes - Ya clasificado
+  int get pendingEggs => (pendingFromYesterday + netTodayHarvest) - sortedHarvestUnits;
 
   // Carga inicial: HOY + Historial (3d/7d)
   Future<void> fetchDailyData({String? date}) async {
