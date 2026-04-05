@@ -348,7 +348,7 @@ class DailyProductionComparisonTab extends StatelessWidget {
                   ),
                   const Divider(),
                   // Detalle por Tamaños
-                  ...dayReport.report.map(
+                  ...(dayReport.report.toList()..sort((a, b) => a.productSizeId.compareTo(b.productSizeId))).map(
                     (item) => Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -551,7 +551,7 @@ class RawCollectionsTab extends StatelessWidget {
                 else ...[
                   const SizedBox(height: 8),
                   // Detalle por Lote
-                  ...dayReport.report.map(
+                  ...(dayReport.report.toList()..sort((a, b) => a.batchId.compareTo(b.batchId))).map(
                     (item) {
                       // Buscar el lote para obtener aves vivas de forma segura
                       final batches = context.watch<BatchProvider>().batches;
@@ -664,7 +664,7 @@ class CurrentStockHeader extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: stock.map((item) {
+            children: (stock.toList()..sort((a, b) => a.productSizeId.compareTo(b.productSizeId))).map((item) {
               final cartons = item.cartons;
               final units = item.leftoverUnits;
               
