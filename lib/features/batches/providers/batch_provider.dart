@@ -98,4 +98,26 @@ class BatchProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<bool> addAdjustment(int batchId, int quantity, DateTime date, String reason) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _batchService.registerAdjustment(
+        batchId,
+        quantity,
+        date.toIso8601String().split('T')[0],
+        reason,
+      );
+      await fetchBatches();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

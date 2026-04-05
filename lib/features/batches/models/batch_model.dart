@@ -15,7 +15,10 @@ class BatchModel {
     required this.acquisitionDate,
     required this.status,
     this.mortalities = const [],
+    this.adjustments = const [],
   });
+
+  final List<BatchAdjustmentModel> adjustments;
 
   factory BatchModel.fromJson(Map<String, dynamic> json) {
     return BatchModel(
@@ -28,6 +31,11 @@ class BatchModel {
       mortalities: json['mortalities'] != null
           ? (json['mortalities'] as List)
               .map((m) => MortalityModel.fromJson(m))
+              .toList()
+          : [],
+      adjustments: json['adjustments'] != null
+          ? (json['adjustments'] as List)
+              .map((a) => BatchAdjustmentModel.fromJson(a))
               .toList()
           : [],
     );
@@ -65,6 +73,34 @@ class MortalityModel {
       id: json['id'],
       batchId: json['batch_id'],
       quantity: json['quantity'],
+      date: DateTime.parse(json['date']),
+      reason: json['reason'],
+    );
+  }
+}
+
+class BatchAdjustmentModel {
+  final int id;
+  final int batchId;
+  final int quantity;
+  final DateTime date;
+  final String? reason;
+
+  BatchAdjustmentModel({
+    required this.id,
+    required this.batchId,
+    required this.quantity,
+    required this.date,
+    this.reason,
+  });
+
+  factory BatchAdjustmentModel.fromJson(Map<String, dynamic> json) {
+    return BatchAdjustmentModel(
+      id: json['id'],
+      batchId: json['batch_id'],
+      quantity: json['quantity'].runtimeType == double 
+          ? (json['quantity'] as double).toInt() 
+          : json['quantity'],
       date: DateTime.parse(json['date']),
       reason: json['reason'],
     );

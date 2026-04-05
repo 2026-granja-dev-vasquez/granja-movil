@@ -96,4 +96,26 @@ class BatchService {
     }
     throw Exception('Error al actualizar lote');
   }
+
+  Future<void> registerAdjustment(int batchId, int quantity, String date, String reason) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('${ApiConstants.baseUrl}/batches/$batchId/adjust'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'quantity': quantity,
+        'date': date,
+        'reason': reason,
+      }),
+    );
+
+    if (response.statusCode != 201) {
+      final error = jsonDecode(response.body);
+      throw Exception(error['message'] ?? 'Error al registrar ajuste');
+    }
+  }
 }

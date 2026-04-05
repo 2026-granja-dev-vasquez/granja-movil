@@ -4,7 +4,7 @@ import '../models/batch_model.dart';
 import '../providers/batch_provider.dart';
 import 'batch_form_screen.dart';
 import 'mortality_history_screen.dart';
-import 'widgets/mortality_dialog.dart';
+import 'widgets/adjustment_dialog.dart';
 
 class BatchListScreen extends StatefulWidget {
   const BatchListScreen({super.key});
@@ -135,7 +135,7 @@ class _BatchListScreenState extends State<BatchListScreen> {
                       ),
                       const SizedBox(height: 16),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           if (isActive) ...[
                             TextButton.icon(
@@ -143,11 +143,10 @@ class _BatchListScreenState extends State<BatchListScreen> {
                               icon: const Icon(Icons.stop_circle_outlined, color: Colors.orange, size: 18),
                               label: const Text('Finalizar', style: TextStyle(color: Colors.orange, fontSize: 12)),
                             ),
-                            const Spacer(),
                             TextButton.icon(
-                              onPressed: () => _showMortalityDialog(batch.id),
-                              icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 18),
-                              label: const Text('Baja', style: TextStyle(color: Colors.red, fontSize: 12)),
+                              onPressed: () => _showAdjustmentDialog(batch.id),
+                              icon: const Icon(Icons.scale_outlined, color: Colors.indigo, size: 18),
+                              label: const Text('Ajuste', style: TextStyle(color: Colors.indigo, fontSize: 12)),
                             ),
                           ],
                           TextButton.icon(
@@ -181,10 +180,10 @@ class _BatchListScreenState extends State<BatchListScreen> {
     );
   }
 
-  void _showMortalityDialog(int batchId) {
+  void _showAdjustmentDialog(int batchId) {
     showDialog(
       context: context,
-      builder: (_) => MortalityDialog(batchId: batchId),
+      builder: (_) => AdjustmentDialog(batchId: batchId),
     );
   }
 }
