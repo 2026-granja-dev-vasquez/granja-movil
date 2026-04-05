@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../providers/production_provider.dart';
 import '../../batches/providers/batch_provider.dart';
+import '../../batches/models/batch_model.dart';
 import '../../products/providers/product_provider.dart';
 import 'add_batch_collection_screen.dart';
 import 'add_sorting_screen.dart';
@@ -471,23 +472,55 @@ class RawCollectionsTab extends StatelessWidget {
                         ),
                       ),
                       if (!isEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            "Total: ${dayReport.report.fold(0, (sum, i) => sum + i.totalUnits)} huevos",
-                            style: TextStyle(
-                              color: Colors.teal.shade800,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
+                        Builder(
+                          builder: (context) {
+                            final totalCollected = dayReport.report.fold(0, (sum, i) => sum + i.totalUnits);
+                            final batches = context.watch<BatchProvider>().batches;
+                            
+                            // SOLO CONTAR LAS AVES DE LOS LOTES QUE REPORTARON ESE DÍA
+                            int totalBirds = 0;
+                            for (var item in dayReport.report) {
+                              final bIndex = batches.indexWhere((b) => b.id == item.batchId);
+                              if (bIndex != -1) {
+                                totalBirds += batches[bIndex].currentQuantity;
+                              }
+                            }
+                            
+                            final double avgPercentage = totalBirds > 0 ? (totalCollected / totalBirds) * 100 : 0;
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    "Total: $totalCollected huevos",
+                                    style: TextStyle(
+                                      color: Colors.teal.shade800,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                if (totalBirds > 0)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4, right: 4),
+                                    child: Text(
+                                      "$totalCollected / $totalBirds aves - ${avgPercentage.toStringAsFixed(1)}% Promedio",
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
                         ),
                     ],
                   ),
@@ -519,34 +552,60 @@ class RawCollectionsTab extends StatelessWidget {
                   const SizedBox(height: 8),
                   // Detalle por Lote
                   ...dayReport.report.map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.location_on,
-                            color: Colors.teal,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              item.batchName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+                    (item) {
+                      // Buscar el lote para obtener aves vivas de forma segura
+                      final batches = context.watch<BatchProvider>().batches;
+                      final int batchIndex = batches.indexWhere((b) => b.id == item.batchId);
+                      final BatchModel? batch = batchIndex != -1 ? batches[batchIndex] : null;
+                      
+                      final birdCount = batch?.currentQuantity ?? 0;
+                      final double percentage = birdCount > 0 
+                        ? (item.totalUnits / birdCount) * 100 
+                        : 0;
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.location_on,
+                              color: Colors.teal,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.batchName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  if (birdCount > 0)
+                                    Text(
+                                      "${item.totalUnits} / $birdCount aves - ${percentage.toStringAsFixed(1)}% prod.",
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.green.shade700,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
-                          ),
-                          Text(
-                            item.formatted,
-                            style: const TextStyle(color: Colors.blueGrey),
-                          ),
-                        ],
-                      ),
-                    ),
+                            Text(
+                              item.formatted,
+                              style: const TextStyle(color: Colors.blueGrey),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
                   ),
                 ],
                 const SizedBox(height: 16),
