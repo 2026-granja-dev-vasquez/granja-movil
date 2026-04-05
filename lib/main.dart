@@ -101,15 +101,84 @@ class MainApp extends StatelessWidget {
       home: Consumer<AuthProvider>(
         builder: (context, auth, _) {
           if (auth.isLoading) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
+            return const StartupLoadingScreen();
           }
           if (auth.isAuthenticated) {
             return const DashboardScreen();
           }
           return const LoginScreen();
         },
+      ),
+    );
+  }
+}
+
+class StartupLoadingScreen extends StatefulWidget {
+  const StartupLoadingScreen({super.key});
+
+  @override
+  State<StartupLoadingScreen> createState() => _StartupLoadingScreenState();
+}
+
+class _StartupLoadingScreenState extends State<StartupLoadingScreen> {
+  bool _showRescueButton = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(const Duration(seconds: 7), () {
+      if (mounted) {
+        setState(() {
+          _showRescueButton = true;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 24),
+            if (_showRescueButton) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  "Sigue cargando...\n¿Problemas de conexión con el servidor?",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () {
+                  context.read<AuthProvider>().logout();
+                },
+                icon: const Icon(Icons.logout),
+                label: const Text("CERRAR SESIÓN Y REINTENTAR"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade50,
+                  foregroundColor: Colors.red.shade700,
+                ),
+              ),
+            ] else
+              const Text(
+                "Iniciando sesión...",
+                style: TextStyle(color: Colors.indigo, fontWeight: FontWeight.w500),
+              ),
+          ],
+        ),
       ),
     );
   }

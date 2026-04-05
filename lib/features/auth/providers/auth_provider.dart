@@ -44,10 +44,14 @@ class AuthProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     
-    _user = await _authService.getCurrentUser();
-    
-    _isLoading = false;
-    notifyListeners();
+    try {
+      _user = await _authService.getCurrentUser();
+    } catch (e) {
+      _user = null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   void clearError() {

@@ -13,7 +13,7 @@ class AuthService {
         Uri.parse(ApiConstants.login),
         headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       final data = jsonDecode(response.body);
 
@@ -55,7 +55,7 @@ class AuthService {
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         return UserModel.fromJson(jsonDecode(response.body));
@@ -78,7 +78,7 @@ class AuthService {
         Uri.parse(ApiConstants.forgotPassword),
         headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
         body: jsonEncode({'email': email}),
-      );
+      ).timeout(const Duration(seconds: 10));
       return jsonDecode(response.body);
     } catch (e) {
       return {'message': 'Error de conexión: $e'};
