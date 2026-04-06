@@ -234,8 +234,8 @@ class ProductionProvider with ChangeNotifier {
   // Al ser persistente, este es el origen de verdad para el cálculo de "Ayer"
   int get totalInitialTableRemnants => totalTableUnits;
   
-  // Produccion de hoy = exactamente lo recolectado hoy (los de ayer ya estan en HISTORICO/AYER)
-  int get netTodayHarvest => totalRawCount + totalRawAdjustments;
+  // Produccion de hoy = exactamente lo recolectado hoy (los ajustes de balance se absorben en el Déficit)
+  int get netTodayHarvest => totalRawCount;
 
   // POR CLASIFICAR = Déficit Histórico + Hoy (cosecha) + Ajustes - Ya clasificado
   int get pendingEggs => (pendingFromYesterday + netTodayHarvest) - sortedHarvestUnits;

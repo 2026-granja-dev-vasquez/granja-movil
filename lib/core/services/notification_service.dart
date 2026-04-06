@@ -39,6 +39,7 @@ class NotificationService {
     const InitializationSettings initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
+      macOS: initializationSettingsIOS, // Fixes macOS simulator compile crash
     );
 
     await _flutterLocalNotificationsPlugin.initialize(
@@ -136,6 +137,13 @@ class NotificationService {
           presentBadge: true,
           presentSound: true,
           presentBanner: true, // For foreground iOS alerts
+          presentList: true,
+        ),
+        macOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          presentBanner: true,
           presentList: true,
         ),
       ),
