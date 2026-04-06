@@ -360,9 +360,8 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
   // DIALOG: Add classification entry for a size (Simple additive logic)
   // ─────────────────────────────────────────────────────────────────────────
   void _openAddEntryDialog(ProductSizeModel size, ProductionProvider provider, int tableQty, {ProductionModel? editEntry}) {
-    final int initialNet = editEntry != null ? editEntry.usefulQuantity + tableQty : 0;
-    final cartCtrl = TextEditingController(text: initialNet > 0 ? (initialNet ~/ 30).toString() : '0');
-    final unitCtrl = TextEditingController(text: initialNet > 0 ? (initialNet % 30).toString() : '0');
+    final cartCtrl = TextEditingController(text: editEntry != null ? (editEntry.usefulQuantity ~/ 30).toString() : '0');
+    final unitCtrl = TextEditingController(text: editEntry != null ? (editEntry.usefulQuantity % 30).toString() : '0');
     bool isSavingDialog = false;
 
     showDialog(
@@ -407,7 +406,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                           border: Border.all(color: Colors.orange.shade100),
                         ),
                         child: Text(
-                          "Información: De ayer quedaron ${tableQty ~/ 30} cart. + ${tableQty % 30} sueltos.",
+                          "Información: De ayer quedaron ${tableQty ~/ 30} cart. + ${tableQty % 30} sueltos.\n💡 Ingresa la cantidad TOTAL física que ves (incluyendo los de ayer).",
                           style: TextStyle(fontSize: 11, color: Colors.brown.shade700, fontWeight: FontWeight.bold),
                           textAlign: TextAlign.center,
                         ),
@@ -456,7 +455,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                             elevation: 0,
                           ),
-                          onPressed: (netToday >= tableQty || (netToday == 0 && tableQty == 0)) && netToday > 0 && !isSavingDialog 
+                          onPressed: netToday > 0 && !isSavingDialog 
                             ? () async {
                                 setDialogState(() => isSavingDialog = true);
                                 bool success;
@@ -464,7 +463,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                                   success = await provider.updateSortedProduction(ProductionModel(
                                     id: editEntry.id,
                                     productSizeId: size.id,
-                                    usefulQuantity: netToday - tableQty,
+                                    usefulQuantity: netToday,
                                     damagedQuantity: editEntry.damagedQuantity,
                                     date: editEntry.date,
                                     origin: editEntry.origin,
@@ -472,7 +471,7 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
                                 } else {
                                   success = await provider.addSortedProduction(ProductionModel(
                                     productSizeId: size.id,
-                                    usefulQuantity: netToday - tableQty,
+                                    usefulQuantity: netToday,
                                     damagedQuantity: 0,
                                     date: _selectedDate,
                                   ));
@@ -879,8 +878,8 @@ class _AddSortingScreenState extends State<AddSortingScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "${(totalSorted + tableQty) ~/ 30} CARTONES Y ${(totalSorted + tableQty) % 30} HUEVOS",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: (totalSorted + tableQty) > 0 ? Colors.green.shade700 : Colors.grey.shade400),
+              "${totalSorted ~/ 30} CARTONES Y ${totalSorted % 30} HUEVOS",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: totalSorted > 0 ? Colors.green.shade700 : Colors.grey.shade400),
             ),
             const SizedBox(height: 8),
             Wrap(
