@@ -45,7 +45,9 @@ class SaleModel {
       totalAmount: double.parse(json['total_amount'].toString()),
       paidAmount: double.parse(json['paid_amount'].toString()),
       status: status,
-      date: DateTime.parse(json['date']),
+      // Normalizamos a hora local del dispositivo para evitar desfases de día
+      // cuando el backend responde fechas en UTC.
+      date: DateTime.parse(json['date']).toLocal(),
       notes: json['notes'],
       customer: json['customer'] != null ? CustomerModel.fromJson(json['customer']) : null,
       items: json['items'] != null

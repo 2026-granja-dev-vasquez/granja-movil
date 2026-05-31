@@ -51,16 +51,9 @@ class _CashBoxScreenState extends State<CashBoxScreen>
 
   // ─────────────── HELPERS ──────────────────────────────────────────────────
 
-  Map<String, List<CashTransactionModel>> _groupTransactions(
+  List<CashTransactionModel> _getFilteredTransactions(
       List<CashTransactionModel> transactions) {
-    final Map<String, List<CashTransactionModel>> groups = {};
-    final now = DateTime.now();
-    final todayStr = DateFormat('yyyy-MM-dd').format(now);
-    final yesterdayStr =
-        DateFormat('yyyy-MM-dd').format(now.subtract(const Duration(days: 1)));
-
-    // Apply filters
-    List<CashTransactionModel> filtered = transactions.where((tx) {
+    return transactions.where((tx) {
       if (_txFilter == 'income' && tx.type != 'income') return false;
       if (_txFilter == 'expense' && tx.type != 'expense') return false;
       if (_txFilter == 'expense' &&
@@ -77,6 +70,17 @@ class _CashBoxScreenState extends State<CashBoxScreen>
       }
       return true;
     }).toList();
+  }
+
+  Map<String, List<CashTransactionModel>> _groupTransactions(
+      List<CashTransactionModel> transactions) {
+    final Map<String, List<CashTransactionModel>> groups = {};
+    final now = DateTime.now();
+    final todayStr = DateFormat('yyyy-MM-dd').format(now);
+    final yesterdayStr =
+        DateFormat('yyyy-MM-dd').format(now.subtract(const Duration(days: 1)));
+
+    final filtered = _getFilteredTransactions(transactions);
 
     for (var tx in filtered.reversed) {
       final dateKey = DateFormat('yyyy-MM-dd').format(tx.createdAt);
@@ -245,7 +249,18 @@ class _CashBoxScreenState extends State<CashBoxScreen>
 
   Widget _buildActiveBoxView(CashBoxModel box) {
     final currencyFormat = NumberFormat.currency(symbol: 'Q');
+    final filteredTransactions = _getFilteredTransactions(box.transactions);
     final groupedTransactions = _groupTransactions(box.transactions);
+    final activeFiltered = filteredTransactions.where((tx) => !tx.isVoided).toList();
+    final totalFilteredIncome = activeFiltered
+        .where((tx) => tx.type == 'income')
+        .fold(0.0, (sum, tx) => sum + tx.amount);
+    final totalFilteredExpense = activeFiltered
+        .where((tx) => tx.type == 'expense')
+        .fold(0.0, (sum, tx) => sum + tx.amount);
+    final selectedRubroTotal = activeFiltered
+        .where((tx) => tx.type == 'expense' && (_rubroFilter == null || tx.category == _rubroFilter))
+        .fold(0.0, (sum, tx) => sum + tx.amount);
     final cashProvider = context.watch<CashProvider>();
     final categories = cashProvider.expenseCategories;
 
@@ -363,6 +378,75 @@ class _CashBoxScreenState extends State<CashBoxScreen>
               ),
               onChanged: (val) => setState(() => _searchQuery = val),
             ),
+          ),
+
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: _txFilter == 'income'
+                  ? Colors.green.shade50
+                  : (_txFilter == 'expense' ? Colors.red.shade50 : Colors.indigo.shade50),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _txFilter == 'income'
+                    ? Colors.green.shade100
+                    : (_txFilter == 'expense' ? Colors.red.shade100 : Colors.indigo.shade100),
+              ),
+            ),
+            child: _txFilter == 'all'
+                ? Row(
+                    children: [
+                      const Icon(Icons.summarize_outlined, size: 18, color: Colors.indigo),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Resumen filtrado',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
+                        ),
+                      ),
+                      Text(
+                        '+ ${currencyFormat.format(totalFilteredIncome)}',
+                        style: const TextStyle(color: Colors.green, fontSize: 13, fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '- ${currencyFormat.format(totalFilteredExpense)}',
+                        style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Icon(
+                        _txFilter == 'income' ? Icons.trending_up : Icons.summarize_outlined,
+                        size: 18,
+                        color: _txFilter == 'income' ? Colors.green : Colors.red,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _txFilter == 'income'
+                              ? 'Total de ingresos filtrados'
+                              : (_rubroFilter != null
+                                  ? 'Total de "$_rubroFilter"'
+                                  : 'Total de egresos filtrados'),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
+                        ),
+                      ),
+                      Text(
+                        _txFilter == 'income'
+                            ? '+ ${currencyFormat.format(totalFilteredIncome)}'
+                            : '- ${currencyFormat.format(selectedRubroTotal)}',
+                        style: TextStyle(
+                          color: _txFilter == 'income' ? Colors.green : Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
           ),
 
           const SizedBox(height: 24),
@@ -548,150 +632,149 @@ class _CashBoxScreenState extends State<CashBoxScreen>
         opacity: isVoided ? 0.6 : 1.0,
         child: Column(
           children: [
-            ListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              leading: Row(
-                mainAxisSize: MainAxisSize.min,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
                     width: 48,
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
-                      color: isVoided
-                          ? Colors.grey.shade200
-                          : Colors.grey.shade100,
+                      color: isVoided ? Colors.grey.shade200 : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(day,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 18,
-                              color: isVoided
-                                  ? Colors.grey.shade600
-                                  : Colors.indigo,
-                              height: 1.1,
-                              decoration: isVoided
-                                  ? TextDecoration.lineThrough
-                                  : null,
-                            )),
-                        Text(month,
-                            style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey.shade600,
-                                letterSpacing: 0.5)),
+                        Text(
+                          day,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                            color: isVoided ? Colors.grey.shade600 : Colors.indigo,
+                            height: 1.1,
+                            decoration: isVoided ? TextDecoration.lineThrough : null,
+                          ),
+                        ),
+                        Text(
+                          month,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey.shade600,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   CircleAvatar(
                     backgroundColor: isVoided
                         ? Colors.grey.shade200
-                        : (isIncome
-                            ? Colors.green.shade50
-                            : Colors.red.shade50),
+                        : (isIncome ? Colors.green.shade50 : Colors.red.shade50),
                     radius: 16,
                     child: Icon(
                       isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-                      color: isVoided
-                          ? Colors.grey
-                          : (isIncome ? Colors.green : Colors.red),
+                      color: isVoided ? Colors.grey : (isIncome ? Colors.green : Colors.red),
                       size: 14,
                     ),
                   ),
-                ],
-              ),
-              title: Row(
-                children: [
+                  const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      tx.category.toUpperCase(),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                        color: isVoided
-                            ? Colors.grey
-                            : (isIncome
-                                ? Colors.green.shade700
-                                : Colors.red.shade700),
-                        letterSpacing: 0.5,
-                        decoration:
-                            isVoided ? TextDecoration.lineThrough : null,
-                      ),
-                    ),
-                  ),
-                  if (isVoided)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                          color: Colors.red.shade100,
-                          borderRadius: BorderRadius.circular(6)),
-                      child: const Text('ANULADO',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                tx.category.toUpperCase(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                  color: isVoided
+                                      ? Colors.grey
+                                      : (isIncome ? Colors.green.shade700 : Colors.red.shade700),
+                                  letterSpacing: 0.5,
+                                  decoration: isVoided ? TextDecoration.lineThrough : null,
+                                ),
+                              ),
+                            ),
+                            if (isVoided) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade100,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'ANULADO',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          tx.description ?? 'Sin descripción',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                              color: Colors.red,
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold)),
+                            fontSize: 12,
+                            color: isVoided ? Colors.grey : Colors.black87,
+                            fontWeight: FontWeight.w500,
+                            height: 1.3,
+                            decoration: isVoided ? TextDecoration.lineThrough : null,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Text(
+                              '${isIncome ? '+' : '-'} ${format.format(tx.amount)}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                                color: isVoided
+                                    ? Colors.grey
+                                    : (isIncome ? Colors.green.shade600 : Colors.red.shade600),
+                                decoration: isVoided ? TextDecoration.lineThrough : null,
+                              ),
+                            ),
+                            const Spacer(),
+                            if (!isIncome && !isVoided)
+                              IconButton(
+                                icon: const Icon(Icons.edit_note, size: 18, color: Colors.blueGrey),
+                                onPressed: () => _showEditRubroDialog(tx),
+                                tooltip: 'Cambiar rubro',
+                                constraints: const BoxConstraints(),
+                                padding: EdgeInsets.zero,
+                              ),
+                            if (isAdmin && !isVoided) ...[
+                              if (!isIncome) const SizedBox(width: 4),
+                              IconButton(
+                                icon: const Icon(Icons.cancel_outlined, size: 20, color: Colors.redAccent),
+                                onPressed: () => _showVoidDialog(tx),
+                                tooltip: 'Anular',
+                                constraints: const BoxConstraints(),
+                                padding: EdgeInsets.zero,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
                     ),
-                ],
-              ),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  tx.description ?? 'Sin descripción',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isVoided ? Colors.grey : Colors.black87,
-                    fontWeight: FontWeight.w500,
-                    height: 1.3,
-                    decoration:
-                        isVoided ? TextDecoration.lineThrough : null,
                   ),
-                ),
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${isIncome ? '+' : '-'} ${format.format(tx.amount)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 15,
-                      color: isVoided
-                          ? Colors.grey
-                          : (isIncome
-                              ? Colors.green.shade600
-                              : Colors.red.shade600),
-                      decoration:
-                          isVoided ? TextDecoration.lineThrough : null,
-                    ),
-                  ),
-                  if (!isIncome && !isVoided) ...[
-                    const SizedBox(width: 4),
-                    IconButton(
-                      icon: const Icon(Icons.edit_note,
-                          size: 18, color: Colors.blueGrey),
-                      onPressed: () => _showEditRubroDialog(tx),
-                      tooltip: 'Cambiar rubro',
-                      constraints: const BoxConstraints(),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ],
-                  if (isAdmin && !isVoided) ...[
-                    const SizedBox(width: 4),
-                    IconButton(
-                      icon: const Icon(Icons.cancel_outlined,
-                          size: 20, color: Colors.redAccent),
-                      onPressed: () => _showVoidDialog(tx),
-                      tooltip: 'Anular',
-                      constraints: const BoxConstraints(),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ],
                 ],
               ),
             ),
