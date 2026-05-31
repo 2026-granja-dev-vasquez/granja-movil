@@ -180,6 +180,40 @@ class _CashHistoryScreenState extends State<CashHistoryScreen> {
                 const SizedBox(height: 16),
                 const Center(
                   child: Text(
+                    "RESUMEN POR RUBROS",
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.grey,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                if (session.transactions.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          "Cargando resumen por rubros...",
+                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  _buildCategorySummary(session.transactions, format),
+
+                const SizedBox(height: 16),
+                const Center(
+                  child: Text(
                     "DETALLE DE MOVIMIENTOS POR DÍA", 
                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.1)
                   ),
@@ -201,6 +235,117 @@ class _CashHistoryScreenState extends State<CashHistoryScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCategorySummary(
+    List<CashTransactionModel> transactions,
+    NumberFormat format,
+  ) {
+    final validTxs = transactions.where((tx) => !tx.isVoided).toList();
+    final Map<String, double> incomeByCategory = {};
+    final Map<String, double> expenseByCategory = {};
+
+    for (final tx in validTxs) {
+      final category = tx.category.trim().isEmpty ? "SIN CATEGORÍA" : tx.category.trim();
+      if (tx.isIncome) {
+        incomeByCategory[category] = (incomeByCategory[category] ?? 0) + tx.amount;
+      } else {
+        expenseByCategory[category] = (expenseByCategory[category] ?? 0) + tx.amount;
+      }
+    }
+
+    final incomeEntries = incomeByCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final expenseEntries = expenseByCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildCategoryBlock(
+            title: "Ingresos",
+            entries: incomeEntries,
+            isIncome: true,
+            format: format,
+          ),
+          if (incomeEntries.isNotEmpty && expenseEntries.isNotEmpty)
+            const Divider(height: 18),
+          _buildCategoryBlock(
+            title: "Egresos",
+            entries: expenseEntries,
+            isIncome: false,
+            format: format,
+          ),
+          if (incomeEntries.isEmpty && expenseEntries.isEmpty)
+            const Text(
+              "No hay movimientos válidos para resumir.",
+              style: TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryBlock({
+    required String title,
+    required List<MapEntry<String, double>> entries,
+    required bool isIncome,
+    required NumberFormat format,
+  }) {
+    if (entries.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title.toUpperCase(),
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            color: isIncome ? Colors.green.shade700 : Colors.red.shade700,
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 6),
+        ...entries.map((entry) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    entry.key,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Text(
+                  "${isIncome ? '+' : '-'} ${format.format(entry.value)}",
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: isIncome ? Colors.green : Colors.red,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
     );
   }
 
